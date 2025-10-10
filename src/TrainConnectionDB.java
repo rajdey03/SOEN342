@@ -21,16 +21,6 @@ public class TrainConnectionDB {
             while ((line = br.readLine()) != null){
                 String[] fields = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
 
-                System.out.println(fields[0]);
-                System.out.println(fields[1]);
-                System.out.println(fields[2]);
-                System.out.println(fields[3]);
-                System.out.println(fields[4]);
-                System.out.println(fields[5]);
-                System.out.println(fields[6]);
-                System.out.println(fields[7]);
-                System.out.println(fields[8]);
-
                 TrainConnection tc = new TrainConnection();
                 tc.setRouteID(fields[0]);
                 tc.setDepartureCity(fields[1]);
@@ -43,6 +33,8 @@ public class TrainConnectionDB {
                 tc.setSecondClassRate(Double.parseDouble(fields[8]));
                 trainConnections.add(tc);
             }
+
+            System.out.println("Loaded " + trainConnections.size() + " train connections");
 
         }
     }
