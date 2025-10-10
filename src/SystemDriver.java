@@ -10,7 +10,7 @@ public class SystemDriver {
     static TrainConnectionDB trainDB = new TrainConnectionDB();
     static String lastSortParameter = null;
     static boolean ascending = true;
-    static Map<String,String> filters;
+    static Map<String,String> filters = new java.util.HashMap<>();
 
     public static void main(String[] args) {
         String csvPath = "resources/eu_rail_network.csv";
@@ -23,18 +23,18 @@ public class SystemDriver {
 
         boolean running = true;
         while (running) {
-            System.out.println("--- Train Connection System ---");
+            System.out.println("------------ Train Connection System ------------");
             System.out.println("Welcome to the Train Connection System!");
             System.out.print("Enter departure city: ");
             String departureCity = scanner.nextLine();
-            addDeparture(departureCity);
+            addDeparture(departureCity); //change case sensitive maybe
             System.out.print("Enter arrival city: ");
             String arrivalCity = scanner.nextLine();
             addArrival(arrivalCity);
-            System.out.println("Choose an option: ");
+            System.out.println("\n------------ Choose an option: ------------");
             System.out.println("1. Search for connections");
             System.out.println("2. Add additional inputs");
-            System.out.print("3. Exit");
+            System.out.println("3. Exit");
             System.out.print("Select an option: ");
             String choice = scanner.nextLine();
 
@@ -42,7 +42,7 @@ public class SystemDriver {
                 case "1":
                     List<TrainConnection> trainConnections = search();
                     //NEED TO PRINT CONNECTIONS WITH DURATION
-                    System.out.println("Found connections: ");
+                    System.out.println("\n------------ Found connections: ------------");
                     displayAllConnections(trainConnections, departureCity, arrivalCity);
 
                     boolean sortingMenu = true;
@@ -52,6 +52,7 @@ public class SystemDriver {
                         System.out.println("2. Sort by First Class Rate");
                         System.out.println("3. Sort by Second Class Rate");
                         System.out.println("4. Go back");
+                        System.out.println("5. Exit");
                         System.out.print("Select an option: ");
                         String sortChoice = scanner.nextLine();
                         switch (sortChoice) {
@@ -69,6 +70,10 @@ public class SystemDriver {
                                 break;
                             case "4":
                                 sortingMenu = false;
+                                break;
+                            case "5":
+                                System.out.println("Exiting the system. Thank you for using our Train Connection System!");
+                                System.exit(0);
                                 break;
                             default:
                                 System.out.println("Invalid option. Please try again.");
@@ -101,14 +106,11 @@ public class SystemDriver {
                     break;
             }
         }
-
-
-
     }
 
     private static void displayConnection(TrainConnection tc) {
-        System.out.println("Route: " + tc.getRouteID() +
-                ", From: " + tc.getDepartureCity() +
+        System.out.println(
+                "From: " + tc.getDepartureCity() +
                 ", To: " + tc.getArrivalCity() +
                 ", Departure: " + tc.getDepartureTime() +
                 ", Arrival: " + tc.getArrivalTime() +
@@ -162,6 +164,14 @@ public class SystemDriver {
                 i++;
             }
         }
+    }
+
+    public static void addArrival(String city){
+        userArrivalCity = city;
+    }
+
+    public static void addDeparture(String city){
+        userDepartureCity = city;
     }
 
     public static List<TrainConnection> search(){
@@ -265,4 +275,6 @@ public class SystemDriver {
 
         return transferInMinutes / 60.0;
     }
+
+
 }
