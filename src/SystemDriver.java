@@ -1,3 +1,5 @@
+package src;
+
 public class SystemDriver {
     public static void main(String[] args) {
         String csvPath = "resources/eu_rail_network.csv";
@@ -14,7 +16,7 @@ public class SystemDriver {
             System.out.println("Arrival City: " + tc.getArrivalCity());
             System.out.println("Departure Time: " + tc.getDepartureTime());
             System.out.println("Arrival Time: " + tc.getArrivalTime());
-            System.out.println("Train Type: " + tc.getTrain().getTrainType());
+            System.out.println("src.Train Type: " + tc.getTrain().getTrainType());
             System.out.println("Days of Operation: " + tc.getDaysOfOperation());
             System.out.println("First Class Rate: " + tc.getFirstClassRate());
             System.out.println("Second Class Rate: " + tc.getSecondClassRate());
