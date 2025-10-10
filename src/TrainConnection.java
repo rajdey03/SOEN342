@@ -14,6 +14,7 @@ public class TrainConnection {
     private List<String> daysOfOperation;
     private double firstClassRate;
     private double secondClassRate;
+    private double duration;
 
 
     public String getRouteID() {
@@ -125,5 +126,13 @@ public class TrainConnection {
 
     public void setSecondClassRate(double secondClassRate) {
         this.secondClassRate = secondClassRate;
+    }
+
+    public double getDuration() {
+        return duration;
+    }
+
+    public void setDuration(double duration) {
+        this.duration = duration;
     }
 }

@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class TrainConnectionDB {
     private List<TrainConnection> trainConnections;
@@ -59,6 +60,82 @@ public class TrainConnectionDB {
     }
 
 
+    public List<TrainConnection> findConnections(String departureCity, String arrivalCity, Map<String,String> filters) {
+        List<TrainConnection> results = new ArrayList<>();
+        for (TrainConnection tc : trainConnections){
+            if (tc.getDepartureCity().equalsIgnoreCase(departureCity) &&
+                tc.getArrivalCity().equalsIgnoreCase(arrivalCity)){
+                results.add(tc);
+            }
+        }
 
+        for(Map.Entry<String, String> filter : filters.entrySet()){
+            String key = filter.getKey();
+            String value = filter.getValue();
+            results.removeIf(tc -> {
+                switch (key) {
+                    case "departureDay":
+                        return !tc.getDaysOfOperation().contains(value);
+                    case "arrivalDay":
+                        return !tc.getDaysOfOperation().contains(value);
+                    case "trainType":
+                        return !tc.getTrain().getTrainType().equalsIgnoreCase(value);
+                    case "departureTime":
+                        return tc.getDepartureTime().compareTo(value) < 0;
+                    case "arrivalTime":
+                        return tc.getArrivalTime().compareTo(value) > 0;
+                    case "minFirstClassPrice":
+                        return tc.getFirstClassRate() < Double.parseDouble(value);
+                    case "maxFirstClassPrice":
+                        return tc.getFirstClassRate() > Double.parseDouble(value);
+                    case "minSecondClassPrice":
+                        return tc.getSecondClassRate() < Double.parseDouble(value);
+                    case "maxSecondClassPrice":
+                        return tc.getSecondClassRate() > Double.parseDouble(value);
+                    default:
+                        return false;
+                }
+            });
+        }
+
+        return results;
+    }
+
+    public List<TrainConnection> findIndirectConnections(String departureCity, String arrivalCity) {
+        List<TrainConnection> results = new ArrayList<>();
+
+        // Algorithm to find 1-stop connections
+        for (TrainConnection firstLeg : trainConnections) {
+            if (firstLeg.getDepartureCity().equalsIgnoreCase(departureCity)) {
+                for (TrainConnection secondLeg : trainConnections) {
+                    if (secondLeg.getDepartureCity().equalsIgnoreCase(firstLeg.getArrivalCity()) &&
+                            secondLeg.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
+                        results.add(firstLeg);
+                        results.add(secondLeg);
+                    }
+                }
+            }
+        }
+
+        // Algorithm to find 2-stop connections
+        for (TrainConnection firstLeg : trainConnections) {
+            if (firstLeg.getDepartureCity().equals(departureCity) && !firstLeg.getArrivalCity().equals(arrivalCity)) {
+                for (TrainConnection secondLeg : trainConnections) {
+                    if (secondLeg.getDepartureCity().equals(firstLeg.getArrivalCity()) && !secondLeg.getArrivalCity().equals(arrivalCity)
+                            && !secondLeg.getArrivalCity().equals(departureCity) && !secondLeg.getDepartureCity().equals(departureCity)) {
+                        for (TrainConnection thirdLeg : trainConnections) {
+                            if (thirdLeg.getDepartureCity().equals(secondLeg.getArrivalCity()) && thirdLeg.getArrivalCity().equals(arrivalCity)
+                                    && !thirdLeg.getDepartureCity().equals(departureCity) && !thirdLeg.getDepartureCity().equals(firstLeg.getArrivalCity())) {
+                                results.add(firstLeg);
+                                results.add(secondLeg);
+                                results.add(thirdLeg);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return results;
+    }
 
 }
