@@ -95,7 +95,60 @@ public class SystemDriver {
                     System.out.println("10. Go back to main menu");
                     System.out.print("Select an option: ");
                     String filterChoice = scanner.nextLine();
-                    //NEED TO ADD FILTERS TO THE MAP
+                    
+                    switch(filterChoice) {
+                        case "1":
+                            System.out.print("Enter Departure Day (e.g., Monday): ");
+                            String depDay = scanner.nextLine();
+                            updateInputs("depDay", depDay);
+                            break;
+                        case "2":
+                            System.out.print("Enter Arrival Day (e.g., Monday): ");
+                            String arrDay = scanner.nextLine();
+                            updateInputs("arrDay", arrDay);
+                            break;
+                        case "3":
+                            System.out.print("Enter Train Type (e.g., High-speed, Regional): ");
+                            String trainType = scanner.nextLine();
+                            updateInputs("trainType", trainType);
+                            break;
+                        case "4":
+                            System.out.print("Enter Earliest Departure Time (HH:MM): ");
+                            String depTime = scanner.nextLine();
+                            updateInputs("depTime", depTime);
+                            break;
+                        case "5":
+                            System.out.print("Enter Latest Arrival Time (HH:MM): ");
+                            String arrTime = scanner.nextLine();
+                            updateInputs("arrTime", arrTime);
+                            break;
+                        case "6":
+                            System.out.print("Enter Minimum price for First Class: ");
+                            String minFirstClass = scanner.nextLine();
+                            updateInputs("minFirstClass", minFirstClass);
+                            break;
+                        case "7":
+                            System.out.print("Enter Maximum price for First Class: ");
+                            String maxFirstClass = scanner.nextLine();
+                            updateInputs("maxFirstClass", maxFirstClass);
+                            break;
+                        case "8":
+                            System.out.print("Enter Minimum price for Second Class: ");
+                            String minSecondClass = scanner.nextLine();
+                            updateInputs("minSecondClass", minSecondClass);
+                            break;
+                        case "9":
+                            System.out.print("Enter Maximum price for Second Class: ");
+                            String maxSecondClass = scanner.nextLine();
+                            updateInputs("maxSecondClass", maxSecondClass);
+                            break;
+                        case "10":
+                            // Go back to main menu TEST THIS!!!
+                            break;
+                        default:
+                            System.out.println("Invalid option. Please try again.");
+                            break;
+                    }
 
                 case "3":
                     running = false;
@@ -277,4 +330,35 @@ public class SystemDriver {
     }
 
 
+    public static void updateInputs(String option, String value){
+         if (validateInput(option, value)){
+             recordInput(userArrivalCity, userDepartureCity, option, value);
+         }
+         else {
+             System.out.println("Invalid input. Please try again.");
+         }
+
+    }
+
+    public static boolean validateInput(String option, String value){
+        switch (option){
+            case "depDay", "arrDay", "trainType": //departure day, arrival day, train type
+                 return value != null && !value.trim().isEmpty();
+            case "depTime", "arrTime": // departure time, arrival time
+                return value.matches("([01]?\\d|2[0-3]):[0-5]\\d");
+            case "minFirstClass", "maxFirstClass", "minSecondClass", "maxSecondClass": // min max prices
+                try {
+                double d = Double.parseDouble(value);
+                return d >= 0;
+                } catch (NumberFormatException e) {
+                    return false;
+                }
+            default:
+                return false;
+        }
+    }
+
+    public static void recordInput(String arrivalCity, String departureCity, String option, String value){
+        System.out.println("Recorded input for route " + departureCity + " → " + arrivalCity + ": "
+            + option + " = " + value);    }
 }
