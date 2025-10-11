@@ -43,6 +43,10 @@ public class SystemDriver {
                     List<TrainConnection> trainConnections = search();
                     //NEED TO PRINT CONNECTIONS WITH DURATION
                     System.out.println("\n------------ Found connections: ------------");
+                    if (trainConnections == null || trainConnections.isEmpty()) {
+                        System.out.println("No connections found. Returning to main menu.");
+                        break;
+                    }
                     displayAllConnections(trainConnections, departureCity, arrivalCity);
 
                     boolean sortingMenu = true;
@@ -199,6 +203,7 @@ public class SystemDriver {
 
             else if (i + 1 < trainConnections.size() &&
                     trainConnections.get(i).getDepartureCity().equalsIgnoreCase(departureCity) &&
+                    trainConnections.get(i).getArrivalCity().equalsIgnoreCase(trainConnections.get(i+1).getDepartureCity()) &&
                     trainConnections.get(i+1).getArrivalCity().equalsIgnoreCase(arrivalCity)) {
                 System.out.println("1-stop route:");
                 displayConnection(trainConnections.get(i));
@@ -344,11 +349,51 @@ public class SystemDriver {
         if (filteredConnections != null && !filteredConnections.isEmpty()){
             System.out.println("Filters applied successfully. Found " + filteredConnections.size() + " connections.");
             displayAllConnections(filteredConnections, userDepartureCity, userArrivalCity);
+            showSortingMenu(filteredConnections, userDepartureCity, userArrivalCity, new Scanner(System.in));
         }
         else {
              System.out.println("No connections found with the applied filters.");
         }
 
+    }
+
+    // Sorting menu extracted for reuse after search and after filters
+    private static void showSortingMenu(List<TrainConnection> trainConnections, String departureCity, String arrivalCity, Scanner scanner) {
+        boolean sortingMenu = true;
+        while (sortingMenu) {
+            System.out.println("\nWould you like to sort the results?");
+            System.out.println("1. Sort by Duration");
+            System.out.println("2. Sort by First Class Rate");
+            System.out.println("3. Sort by Second Class Rate");
+            System.out.println("4. Go back");
+            System.out.println("5. Exit");
+            System.out.print("Select an option: ");
+            String sortChoice = scanner.nextLine();
+            switch (sortChoice) {
+                case "1":
+                    trainConnections = toggleSort("duration", trainConnections);
+                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    break;
+                case "2":
+                    trainConnections = toggleSort("firstClassRate", trainConnections);
+                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    break;
+                case "3":
+                    trainConnections = toggleSort("secondClassRate", trainConnections);
+                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    break;
+                case "4":
+                    sortingMenu = false;
+                    break;
+                case "5":
+                    System.out.println("Exiting the system. Thank you for using our Train Connection System!");
+                    System.exit(0);
+                    break;
+                default:
+                    System.out.println("Invalid option. Please try again.");
+                    break;
+            }
+        }
     }
 
     public static boolean validateInput(String option, String value){
