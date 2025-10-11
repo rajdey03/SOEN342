@@ -340,6 +340,7 @@ public class SystemDriver {
 
     public static void updateInputs(String option, String value){
          if (validateInput(option, value)){
+             filters.put(option, value);
              recordInput(userArrivalCity, userDepartureCity, option, value);
          }
          else {
@@ -402,7 +403,7 @@ public class SystemDriver {
                  return value != null && !value.trim().isEmpty();
             case "depTime", "arrTime": // departure time, arrival time
                 return value.matches("([01]?\\d|2[0-3]):[0-5]\\d");
-            case "minFirstClass", "maxFirstClass", "minSecondClass", "maxSecondClass": // min max prices
+            case "minFirstClassPrice", "maxFirstClassPrice", "minSecondClassPrice", "maxSecondClassPrice": // min max prices
                 try {
                 double d = Double.parseDouble(value);
                 return d >= 0;
