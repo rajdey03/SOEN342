@@ -150,6 +150,8 @@ public class SystemDriver {
                             break;
                     }
 
+                    break;
+
                 case "3":
                     running = false;
                     System.out.println("Exiting the system. Thank you for using our Train Connection System!");
@@ -250,9 +252,10 @@ public class SystemDriver {
         }
     }
 
-    private static Map<String,String> gatherFilters() {
-        return filters;
-    }
+ private static Map<String,String> gatherFilters(){
+    return filters;
+}
+
 
     public static List<TrainConnection> toggleSort(String sortParameter, List<TrainConnection> trainConnections){
         if (sortParameter.equals(lastSortParameter)){
@@ -337,6 +340,14 @@ public class SystemDriver {
          else {
              System.out.println("Invalid input. Please try again.");
          }
+          List<TrainConnection> filteredConnections = search();
+        if (filteredConnections != null && !filteredConnections.isEmpty()){
+            System.out.println("Filters applied successfully. Found " + filteredConnections.size() + " connections.");
+            displayAllConnections(filteredConnections, userDepartureCity, userArrivalCity);
+        }
+        else {
+             System.out.println("No connections found with the applied filters.");
+        }
 
     }
 
