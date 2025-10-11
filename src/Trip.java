@@ -19,6 +19,8 @@ public class Trip {
         String departureTime = tc.getDepartureTime();
         String arrivalTime = tc.getArrivalTime();
 
+        arrivalTime = arrivalTime.replaceAll("\\s*\\(\\+\\d+d\\)", "");
+
         String[] depParts = departureTime.split(":");
         String[] arrParts = arrivalTime.split(":");
 

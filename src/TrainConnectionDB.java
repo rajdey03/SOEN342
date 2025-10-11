@@ -34,8 +34,6 @@ public class TrainConnectionDB {
                 trainConnections.add(tc);
             }
 
-            System.out.println("Loaded " + trainConnections.size() + " train connections");
-
         }
     }
 
