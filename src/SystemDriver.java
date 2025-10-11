@@ -129,22 +129,22 @@ public class SystemDriver {
                         case "6":
                             System.out.print("Enter Minimum price for First Class: ");
                             String minFirstClass = scanner.nextLine();
-                            updateInputs("minFirstClass", minFirstClass);
+                            updateInputs("minFirstClassPrice", minFirstClass);
                             break;
                         case "7":
                             System.out.print("Enter Maximum price for First Class: ");
                             String maxFirstClass = scanner.nextLine();
-                            updateInputs("maxFirstClass", maxFirstClass);
+                            updateInputs("maxFirstClassPrice", maxFirstClass);
                             break;
                         case "8":
                             System.out.print("Enter Minimum price for Second Class: ");
                             String minSecondClass = scanner.nextLine();
-                            updateInputs("minSecondClass", minSecondClass);
+                            updateInputs("minSecondClassPrice", minSecondClass);
                             break;
                         case "9":
                             System.out.print("Enter Maximum price for Second Class: ");
                             String maxSecondClass = scanner.nextLine();
-                            updateInputs("maxSecondClass", maxSecondClass);
+                            updateInputs("maxSecondClassPrice", maxSecondClass);
                             break;
                         case "10":
                             // Go back to main menu TEST THIS!!!
