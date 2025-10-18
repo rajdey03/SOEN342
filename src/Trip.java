@@ -1,10 +1,16 @@
 package src;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Trip {
     private double tripDuration;
+    private String tripID;
+    private List<Reservation> reservations;
 
     public Trip() {
         this.tripDuration = 0.0;
+        this.reservations = new ArrayList<>();
     }
 
     public double getTripDuration() {
@@ -13,6 +19,26 @@ public class Trip {
 
     public void setTripDuration(double tripDuration) {
         this.tripDuration = tripDuration;
+    }
+
+    public String getTripID() {
+        return tripID;
+    }
+
+    public void setTripID(String tripID) {
+        this.tripID = tripID;
+    }
+
+    public List<Reservation> getReservations() {
+        return reservations;
+    }
+
+    public void setReservations(List<Reservation> reservations) {
+        this.reservations = reservations;
+    }
+
+    public void addReservation(Reservation reservation) {
+        reservations.add(reservation);
     }
 
     public double computeTripDuration(TrainConnection tc) {
@@ -41,4 +67,5 @@ public class Trip {
         this.tripDuration = durationInMinutes / 60.0;
         return this.tripDuration;
     }
+
 }

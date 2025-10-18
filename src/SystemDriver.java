@@ -8,6 +8,7 @@ public class SystemDriver {
     static String userArrivalCity;
     static String userDepartureCity;
     static TrainConnectionDB trainDB = new TrainConnectionDB();
+    static ClientDB clientDB = new ClientDB();
     static String lastSortParameter = null;
     static boolean ascending = true;
     static Map<String,String> filters = new java.util.HashMap<>();
@@ -49,17 +50,21 @@ public class SystemDriver {
                     }
                     displayAllConnections(trainConnections, departureCity, arrivalCity);
 
-                    boolean sortingMenu = true;
-                    while (sortingMenu) {
+                    boolean subMenu = true;
+                    while (subMenu) {
                         System.out.println("\nWould you like to sort the results?");
                         System.out.println("1. Sort by Duration");
                         System.out.println("2. Sort by First Class Rate");
                         System.out.println("3. Sort by Second Class Rate");
                         System.out.println("4. Go back");
-                        System.out.println("5. Exit");
+
+                        System.out.println("\nReady to book a trip?");
+                        System.out.println("5. Select your connection(s)");
+
+                        System.out.println("6. Exit");
                         System.out.print("Select an option: ");
-                        String sortChoice = scanner.nextLine();
-                        switch (sortChoice) {
+                        String subChoice = scanner.nextLine();
+                        switch (subChoice) {
                             case "1":
                                 trainConnections = toggleSort("duration", trainConnections);
                                 displayAllConnections(trainConnections, departureCity, arrivalCity);
@@ -73,9 +78,35 @@ public class SystemDriver {
                                 displayAllConnections(trainConnections, departureCity, arrivalCity);
                                 break;
                             case "4":
-                                sortingMenu = false;
+                                subMenu = false;
                                 break;
                             case "5":
+                                System.out.println("\nPlease select your desired trip from the displayed list above.");
+                                int userTripOption = Integer.parseInt(scanner.nextLine());
+//                                System.out.println("How many travellers?");
+//                                int numPassengers = Integer.parseInt(scanner.nextLine());
+                                Client c = new Client();
+                                System.out.println("Enter your first name: ");
+                                c.setFirstName(scanner.nextLine());
+                                System.out.println("Enter your last name: ");
+                                c.setLastName(scanner.nextLine());
+                                System.out.println("Enter your id");
+                                c.setClientId(Long.parseLong(scanner.nextLine())); // must be unique
+
+                                clientDB.addClient(c);
+
+                                Trip trip = new Trip();
+
+                                Reservation r = new Reservation();
+                                r.setClient(c);
+
+                                trip.addReservation(r);
+
+
+                                // bookTrip(arrivalCity, departureCity, routeIDs, client)
+
+                                break;
+                            case "6":
                                 System.out.println("Exiting the system. Thank you for using our Train Connection System!");
                                 System.exit(0);
                                 break;
@@ -180,11 +211,17 @@ public class SystemDriver {
 
     private static void displayAllConnections(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
         int i = 0;
+        int j = 0;
         while (i < trainConnections.size()) {
+
+            System.out.println("\n--- Trip Option " + (++j) + " ---");
+            trainConnections.get(i).setTripOptionNumber(j);
 
             if (i + 2 < trainConnections.size() &&
                     trainConnections.get(i).getDepartureCity().equalsIgnoreCase(departureCity) &&
                     trainConnections.get(i+2).getArrivalCity().equalsIgnoreCase(arrivalCity)) {
+                trainConnections.get(i+1).setTripOptionNumber(j);
+                trainConnections.get(i+2).setTripOptionNumber(j);
                 System.out.println("2-stop route:");
                 displayConnection(trainConnections.get(i));
                 displayConnection(trainConnections.get(i+1));
@@ -205,6 +242,7 @@ public class SystemDriver {
                     trainConnections.get(i).getDepartureCity().equalsIgnoreCase(departureCity) &&
                     trainConnections.get(i).getArrivalCity().equalsIgnoreCase(trainConnections.get(i+1).getDepartureCity()) &&
                     trainConnections.get(i+1).getArrivalCity().equalsIgnoreCase(arrivalCity)) {
+                trainConnections.get(i+1).setTripOptionNumber(j);
                 System.out.println("1-stop route:");
                 displayConnection(trainConnections.get(i));
                 displayConnection(trainConnections.get(i+1));
