@@ -15,6 +15,7 @@ public class TrainConnection {
     private double firstClassRate;
     private double secondClassRate;
     private double duration;
+    private int tripOptionNumber;
 
 
     public String getRouteID() {
@@ -134,5 +135,13 @@ public class TrainConnection {
 
     public void setDuration(double duration) {
         this.duration = duration;
+    }
+
+    public int getTripOptionNumber() {
+        return tripOptionNumber;
+    }
+
+    public void setTripOptionNumber(int tripOptionNumber) {
+        this.tripOptionNumber = tripOptionNumber;
     }
 }

@@ -14,7 +14,9 @@ public class ClientDB {
         return clients;
     }
 
-    public void addClient(Client client) {
+    public Client createClient() {
+        Client client = new Client();
         clients.add(client);
+        return client;
     }
 }
