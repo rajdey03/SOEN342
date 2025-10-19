@@ -4,171 +4,67 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class SystemDriver {
+    private static final String CSV_PATH = "resources/eu_rail_network.csv";
+
+    // user inputs (shared state)
     static String userArrivalCity;
     static String userDepartureCity;
+
+    // data access
     static TrainConnectionDB trainDB = new TrainConnectionDB();
     static ClientDB clientDB = new ClientDB();
     static TripDB tripDB = new TripDB();
     static TicketDB ticketDB = new TicketDB();
+
+    // filters map holds optional filter values keyed by filter name (e.g. "depDay" -> "monday")
+    static Map<String, String> filters = new HashMap<>();
+
+    // sort toggling state: remember last parameter and whether the next sort should be ascending
     static String lastSortParameter = null;
     static boolean ascending = true;
-    static Map<String,String> filters = new java.util.HashMap<>();
 
     public static void main(String[] args) {
-        String csvPath = "resources/eu_rail_network.csv";
         Scanner scanner = new Scanner(System.in);
         try {
-            trainDB.loadCSV(csvPath);
+            trainDB.loadCSV(CSV_PATH);
         } catch (java.io.IOException e) {
             e.printStackTrace();
         }
 
+        runMainLoop(scanner);
+    }
+
+
+    /* ---------------------------------------------------------------------
+     * Main loop and menu routing
+     * ------------------------------------------------------------------*/
+
+    private static void runMainLoop(Scanner scanner) {
         boolean running = true;
         while (running) {
             System.out.println("------------ Train Connection System ------------");
             System.out.println("Welcome to the Train Connection System!");
+
             System.out.print("Enter departure city: ");
-            String departureCity = scanner.nextLine();
-            addDeparture(departureCity); //change case sensitive maybe
+            String departureCity = scanner.nextLine().trim();
+            addDeparture(departureCity); // record shared state
+
             System.out.print("Enter arrival city: ");
-            String arrivalCity = scanner.nextLine();
+            String arrivalCity = scanner.nextLine().trim();
             addArrival(arrivalCity);
-            System.out.println("\n------------ Choose an option: ------------");
-            System.out.println("1. Search for connections");
-            System.out.println("2. Add additional inputs");
-            System.out.println("3. Exit");
-            System.out.print("Select an option: ");
-            String choice = scanner.nextLine();
+
+            printMainMenu();
+            String choice = scanner.nextLine().trim();
 
             switch (choice) {
                 case "1":
-                    List<TrainConnection> trainConnections = search();
-                    //NEED TO PRINT CONNECTIONS WITH DURATION
-                    System.out.println("\n------------ Found connections: ------------");
-                    if (trainConnections == null || trainConnections.isEmpty()) {
-                        System.out.println("No connections found. Returning to main menu.");
-                        break;
-                    }
-                    displayAllConnections(trainConnections, departureCity, arrivalCity);
-
-                    boolean subMenu = true;
-                    while (subMenu) {
-                        System.out.println("\nWould you like to sort the results?");
-                        System.out.println("1. Sort by Duration");
-                        System.out.println("2. Sort by First Class Rate");
-                        System.out.println("3. Sort by Second Class Rate");
-                        System.out.println("4. Go back");
-
-                        System.out.println("\nReady to book a trip?");
-                        System.out.println("5. Select your connection(s)");
-
-                        System.out.println("6. Exit");
-                        System.out.print("Select an option: ");
-                        String subChoice = scanner.nextLine();
-                        switch (subChoice) {
-                            case "1":
-                                trainConnections = toggleSort("duration", trainConnections);
-                                displayAllConnections(trainConnections, departureCity, arrivalCity);
-                                break;
-                            case "2":
-                                trainConnections = toggleSort("firstClassRate", trainConnections);
-                                displayAllConnections(trainConnections, departureCity, arrivalCity);
-                                break;
-                            case "3":
-                                trainConnections = toggleSort("secondClassRate", trainConnections);
-                                displayAllConnections(trainConnections, departureCity, arrivalCity);
-                                break;
-                            case "4":
-                                subMenu = false;
-                                break;
-                            case "5":
-                                System.out.println("\nPlease select your desired trip from the displayed list above.");
-                                int userTripOption = Integer.parseInt(scanner.nextLine());
-                                bookTrip(userTripOption);
-
-
-                                break;
-                            case "6":
-                                System.out.println("Exiting the system. Thank you for using our Train Connection System!");
-                                System.exit(0);
-                                break;
-                            default:
-                                System.out.println("Invalid option. Please try again.");
-                                break;
-                        }
-                    }
+                    // Run search and provide sorting/booking submenu
+                    handleSearchList(scanner, departureCity, arrivalCity);
                     break;
                 case "2":
-                    System.out.println("Which input would you like to add?");
-                    System.out.println("1. Departure Day");
-                    System.out.println("2. Arrival Day");
-                    System.out.println("3. Train Type");
-                    System.out.println("4. Departure Time");
-                    System.out.println("5. Arrival Time");
-                    System.out.println("6. Minimum price for First Class");
-                    System.out.println("7. Maximum price for First Class");
-                    System.out.println("8. Minimum price for Second Class");
-                    System.out.println("9. Maximum price for Second Class");
-                    System.out.println("10. Go back to main menu");
-                    System.out.print("Select an option: ");
-                    String filterChoice = scanner.nextLine();
-                    
-                    switch(filterChoice) {
-                        case "1":
-                            System.out.print("Enter Departure Day (e.g., Monday): ");
-                            String depDay = scanner.nextLine();
-                            updateInputs("depDay", depDay);
-                            break;
-                        case "2":
-                            System.out.print("Enter Arrival Day (e.g., Monday): ");
-                            String arrDay = scanner.nextLine();
-                            updateInputs("arrDay", arrDay);
-                            break;
-                        case "3":
-                            System.out.print("Enter Train Type (e.g., High-speed, Regional): ");
-                            String trainType = scanner.nextLine();
-                            updateInputs("trainType", trainType);
-                            break;
-                        case "4":
-                            System.out.print("Enter Earliest Departure Time (HH:MM): ");
-                            String depTime = scanner.nextLine();
-                            updateInputs("depTime", depTime);
-                            break;
-                        case "5":
-                            System.out.print("Enter Latest Arrival Time (HH:MM): ");
-                            String arrTime = scanner.nextLine();
-                            updateInputs("arrTime", arrTime);
-                            break;
-                        case "6":
-                            System.out.print("Enter Minimum price for First Class: ");
-                            String minFirstClass = scanner.nextLine();
-                            updateInputs("minFirstClassPrice", minFirstClass);
-                            break;
-                        case "7":
-                            System.out.print("Enter Maximum price for First Class: ");
-                            String maxFirstClass = scanner.nextLine();
-                            updateInputs("maxFirstClassPrice", maxFirstClass);
-                            break;
-                        case "8":
-                            System.out.print("Enter Minimum price for Second Class: ");
-                            String minSecondClass = scanner.nextLine();
-                            updateInputs("minSecondClassPrice", minSecondClass);
-                            break;
-                        case "9":
-                            System.out.print("Enter Maximum price for Second Class: ");
-                            String maxSecondClass = scanner.nextLine();
-                            updateInputs("maxSecondClassPrice", maxSecondClass);
-                            break;
-                        case "10":
-                            // Go back to main menu TEST THIS!!!
-                            break;
-                        default:
-                            System.out.println("Invalid option. Please try again.");
-                            break;
-                    }
-
+                    // Add optional inputs/filters
+                    handleAddInputsFlow(scanner);
                     break;
-
                 case "3":
                     running = false;
                     System.out.println("Exiting the system. Thank you for using our Train Connection System!");
@@ -180,82 +76,230 @@ public class SystemDriver {
         }
     }
 
+    private static void printMainMenu() {
+        System.out.println("\n------------ Choose an option: ------------");
+        System.out.println("1. Search for connections");
+        System.out.println("2. Add additional inputs");
+        System.out.println("3. Exit");
+        System.out.print("Select an option: ");
+    }
+
+
+
+    /* ---------------------------------------------------------------------
+     * Search flow and sorting UI
+     * ------------------------------------------------------------------*/
+
+    // Handles the search result presentation and the per-search submenu (sort/book).
+    private static void handleSearchList(Scanner scanner, String departureCity, String arrivalCity) {
+        List<TrainConnection> trainConnections = search();
+
+        System.out.println("\n------------ Found connections: ------------");
+        if (trainConnections == null || trainConnections.isEmpty()) {
+            // nothing found — return to main menu
+            System.out.println("No connections found. Returning to main menu.");
+            return;
+        }
+
+        // Print the available options (direct & indirect routes are assembled by displayAllConnections)
+        displayAllConnections(trainConnections, departureCity, arrivalCity);
+
+        // Allow the user to repeatedly toggle sorting or choose to book
+        boolean subMenu = true;
+        while (subMenu) {
+            printSearchSubMenu();
+            String subChoice = scanner.nextLine().trim();
+            switch (subChoice) {
+                case "1":
+                    // Toggle sort by duration (ascending first click, toggles each subsequent click)
+                    trainConnections = toggleSort("duration", trainConnections);
+                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    break;
+                case "2":
+                    trainConnections = toggleSort("firstClassRate", trainConnections);
+                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    break;
+                case "3":
+                    trainConnections = toggleSort("secondClassRate", trainConnections);
+                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    break;
+                case "4":
+                    // back to main menu
+                    subMenu = false;
+                    break;
+                case "5":
+                    // Book a trip (user supplies the trip option index shown in displayAllConnections)
+                    System.out.println("\nPlease select your desired trip from the displayed list above.");
+                    try {
+                        int userTripOption = Integer.parseInt(scanner.nextLine().trim());
+                        bookTrip(userTripOption);
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid number. Returning to submenu.");
+                    }
+                    break;
+                case "6":
+                    System.out.println("Exiting the system. Thank you for using our Train Connection System!");
+                    System.exit(0);
+                    break;
+                default:
+                    System.out.println("Invalid option. Please try again.");
+                    break;
+            }
+        }
+    }
+
+    private static void printSearchSubMenu() {
+        System.out.println("\nWould you like to sort the results?");
+        System.out.println("1. Sort by Duration");
+        System.out.println("2. Sort by First Class Rate");
+        System.out.println("3. Sort by Second Class Rate");
+        System.out.println("4. Go back");
+        System.out.println("\nReady to book a trip?");
+        System.out.println("5. Select your connection(s)");
+        System.out.println("6. Exit");
+        System.out.print("Select an option: ");
+    }
+
+
+
+    /* ---------------------------------------------------------------------
+     * Add inputs / filters flow
+     * ------------------------------------------------------------------*/
+
+    private static void handleAddInputsFlow(Scanner scanner) {
+        printFilterMenu();
+        String filterChoice = scanner.nextLine().trim();
+
+        switch (filterChoice) {
+            case "1":
+                System.out.print("Enter Departure Day (e.g., Monday): ");
+                updateInputs("depDay", scanner.nextLine().trim());
+                break;
+            case "2":
+                System.out.print("Enter Arrival Day (e.g., Monday): ");
+                updateInputs("arrDay", scanner.nextLine().trim());
+                break;
+            case "3":
+                System.out.print("Enter Train Type (e.g., High-speed, Regional): ");
+                updateInputs("trainType", scanner.nextLine().trim());
+                break;
+            case "4":
+                System.out.print("Enter Earliest Departure Time (HH:MM): ");
+                updateInputs("depTime", scanner.nextLine().trim());
+                break;
+            case "5":
+                System.out.print("Enter Latest Arrival Time (HH:MM): ");
+                updateInputs("arrTime", scanner.nextLine().trim());
+                break;
+            case "6":
+                System.out.print("Enter Minimum price for First Class: ");
+                updateInputs("minFirstClassPrice", scanner.nextLine().trim());
+                break;
+            case "7":
+                System.out.print("Enter Maximum price for First Class: ");
+                updateInputs("maxFirstClassPrice", scanner.nextLine().trim());
+                break;
+            case "8":
+                System.out.print("Enter Minimum price for Second Class: ");
+                updateInputs("minSecondClassPrice", scanner.nextLine().trim());
+                break;
+            case "9":
+                System.out.print("Enter Maximum price for Second Class: ");
+                updateInputs("maxSecondClassPrice", scanner.nextLine().trim());
+                break;
+            case "10":
+                // go back
+                break;
+            default:
+                System.out.println("Invalid option. Please try again.");
+                break;
+        }
+    }
+
+    private static void printFilterMenu() {
+        System.out.println("Which input would you like to add?");
+        System.out.println("1. Departure Day");
+        System.out.println("2. Arrival Day");
+        System.out.println("3. Train Type");
+        System.out.println("4. Departure Time");
+        System.out.println("5. Arrival Time");
+        System.out.println("6. Minimum price for First Class");
+        System.out.println("7. Maximum price for First Class");
+        System.out.println("8. Minimum price for Second Class");
+        System.out.println("9. Maximum price for Second Class");
+        System.out.println("10. Go back to main menu");
+        System.out.print("Select an option: ");
+    }
+
+
+
+    /* ---------------------------------------------------------------------
+     * Display helpers and route assembly
+     * ------------------------------------------------------------------*/
+
     private static void displayConnection(TrainConnection tc) {
         System.out.println(
                 "From: " + tc.getDepartureCity() +
-                ", To: " + tc.getArrivalCity() +
-                ", Departure: " + tc.getDepartureTime() +
-                ", Arrival: " + tc.getArrivalTime() +
-                ", Train: " + tc.getTrain().getTrainType() +
-                ", 1st Class: " + tc.getFirstClassRate() +
-                ", 2nd Class: " + tc.getSecondClassRate());
+                        ", To: " + tc.getArrivalCity() +
+                        ", Departure: " + tc.getDepartureTime() +
+                        ", Arrival: " + tc.getArrivalTime() +
+                        ", Train: " + tc.getTrain().getTrainType() +
+                        ", 1st Class: " + tc.getFirstClassRate() +
+                        ", 2nd Class: " + tc.getSecondClassRate());
     }
 
-//    private static void displayAllConnections(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
-//        int i = 0;
-//        int j = 0;
-//        while (i < trainConnections.size()) {
-//
-//            System.out.println("\n--- Trip Option " + (++j) + " ---");
-//            trainConnections.get(i).setTripOptionNumber(j);
-//
-//            if (i + 2 < trainConnections.size() &&
-//                    trainConnections.get(i).getDepartureCity().equalsIgnoreCase(departureCity) &&
-//                    trainConnections.get(i+2).getArrivalCity().equalsIgnoreCase(arrivalCity)) {
-//                trainConnections.get(i+1).setTripOptionNumber(j);
-//                trainConnections.get(i+2).setTripOptionNumber(j);
-//                System.out.println("2-stop route:");
-//                displayConnection(trainConnections.get(i));
-//                displayConnection(trainConnections.get(i+1));
-//                displayConnection(trainConnections.get(i+2));
-//                System.out.println("Total Duration: " + (trainConnections.get(i).getDuration() + trainConnections.get(i+1).getDuration() +
-//                        trainConnections.get(i+2).getDuration() + calculateTransferTime(trainConnections.get(i), trainConnections.get(i+1)) +
-//                        calculateTransferTime(trainConnections.get(i+1), trainConnections.get(i+2))) + " hours");
-//                System.out.println("Duration Breakdown: ");
-//                System.out.println("\tFirst Leg Duration: " + trainConnections.get(i).getDuration() + " hours");
-//                System.out.println("\tFirst Transfer Time: " + calculateTransferTime(trainConnections.get(i), trainConnections.get(i+1)) + " hours");
-//                System.out.println("\tSecond Leg Duration: " + trainConnections.get(i+1).getDuration() + " hours");
-//                System.out.println("\tSecond Transfer Time: " + calculateTransferTime(trainConnections.get(i+1), trainConnections.get(i+2)) + " hours");
-//                System.out.println("\tThird Leg Duration: " + trainConnections.get(i+2).getDuration() + " hours");
-//                i += 3;
-//            }
-
+    /*
+     Build all possible routes between departureCity -> arrivalCity from the provided flat
+     list of TrainConnection objects.
+     */
     private static List<List<TrainConnection>> findAllRoutes(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
         List<List<TrainConnection>> allRoutes = new ArrayList<>();
+        // Build a quick map: departureCityLowerCase -> list of outgoing connections
         Map<String, List<TrainConnection>> depMap = new HashMap<>();
         for (TrainConnection tc : trainConnections) {
             depMap.computeIfAbsent(tc.getDepartureCity().toLowerCase(), k -> new ArrayList<>()).add(tc);
         }
+        // start DFS from the desired departure city
         findRoutesDFS(depMap, departureCity.toLowerCase(), arrivalCity.toLowerCase(), new ArrayList<>(), allRoutes, 0);
         return allRoutes;
     }
 
+    /*
+     Depth-first search to assemble routes. Depth parameter limits the stops (0 => direct allowed, depth >2 stops recursion).
+     */
     private static void findRoutesDFS(Map<String, List<TrainConnection>> depMap, String currentCity, String arrivalCity,
                                       List<TrainConnection> path, List<List<TrainConnection>> allRoutes, int depth) {
-        if (depth > 2) return;
+        if (depth > 2) return; // restrict to at most 3 legs (2 stops)
         List<TrainConnection> nextConnections = depMap.getOrDefault(currentCity, Collections.emptyList());
         for (TrainConnection tc : nextConnections) {
-            if (path.contains(tc)) continue; // prevent cycles
+            if (path.contains(tc)) continue; // prevent cycles by reusing same connection object
             path.add(tc);
             if (tc.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
+                // reached destination: copy the path as a complete route
                 allRoutes.add(new ArrayList<>(path));
             } else {
+                // otherwise continue searching from the arrival city of this leg
                 findRoutesDFS(depMap, tc.getArrivalCity().toLowerCase(), arrivalCity, path, allRoutes, depth + 1);
             }
+            // backtrack one step
             path.remove(path.size() - 1);
         }
     }
 
+    /*
+     Display all (minimal-leg) routes to the CLI. The presentation shows each route's legs and a computed total duration.
+     The method currently selects only routes with the minimal number of legs (e.g., if a direct route exists, 1-stop/2-stop routes are suppressed).
+     */
     private static void displayAllConnections(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
         List<List<TrainConnection>> allRoutes = findAllRoutes(trainConnections, departureCity, arrivalCity);
 
         // Find the minimum number of legs among all routes
         int minLegs = allRoutes.stream().mapToInt(List::size).min().orElse(Integer.MAX_VALUE);
 
-        // Only keep routes with the minimum number of legs
+        // Only keep routes with the minimum number of legs (user sees the 'best' leg-count options)
         List<List<TrainConnection>> filteredRoutes = allRoutes.stream()
                 .filter(route -> route.size() == minLegs)
-                .toList();
+                .collect(Collectors.toList());
 
         for (int i = 0; i < filteredRoutes.size(); i++) {
             List<TrainConnection> route = filteredRoutes.get(i);
@@ -263,6 +307,7 @@ public class SystemDriver {
             for (TrainConnection tc : route) {
                 displayConnection(tc);
             }
+            // Compute total duration = sum of individual leg durations + transfer times between legs
             double totalDuration = 0.0;
             for (int j = 0; j < route.size(); j++) {
                 totalDuration += route.get(j).getDuration();
@@ -278,48 +323,27 @@ public class SystemDriver {
     }
 
 
-    public static List<TrainConnection> getRoutes(List<TrainConnection> trainConnections, int userOptionNumber, String departureCity, String arrivalCity) {
-        List<List<TrainConnection>> allRoutes = findAllRoutes(trainConnections, departureCity, arrivalCity);
 
-        // Find the minimum number of legs among all routes
-        int minLegs = allRoutes.stream().mapToInt(List::size).min().orElse(Integer.MAX_VALUE);
+    /* ---------------------------------------------------------------------
+     * Search and related helpers
+     * ------------------------------------------------------------------*/
 
-        // Only keep routes with the minimum number of legs
-        List<List<TrainConnection>> filteredRoutes = allRoutes.stream()
-                .filter(route -> route.size() == minLegs)
-                .toList();
-
-        if (userOptionNumber < 1 || userOptionNumber > filteredRoutes.size()) {
-            System.out.println("Invalid trip option selected.");
-            return Collections.emptyList();
-        }
-        return filteredRoutes.get(userOptionNumber - 1);
-    }
-
-    public static void addArrival(String city){
-        userArrivalCity = city;
-    }
-
-    public static void addDeparture(String city){
-        userDepartureCity = city;
-    }
-
-    public static List<TrainConnection> search(){
+    // Performs a search for matching TrainConnection objects using current userDepartureCity/userArrivalCity and optional filters.
+    public static List<TrainConnection> search() {
         DurationCalculator durationCalculator = new DurationCalculator();
-        Map<String, String> filters = gatherFilters();
-        List<TrainConnection> connectionsList = trainDB.findConnections(userDepartureCity, userArrivalCity, filters);
+        Map<String, String> appliedFilters = gatherFilters();
+        List<TrainConnection> connectionsList = trainDB.findConnections(userDepartureCity, userArrivalCity, appliedFilters);
 
-        if (connectionsList != null && !connectionsList.isEmpty()){
-            for (TrainConnection tc : connectionsList){
+        if (connectionsList != null && !connectionsList.isEmpty()) {
+            for (TrainConnection tc : connectionsList) {
                 double duration = durationCalculator.computeAllTripDurations(tc);
-                tc.setDuration(duration);
+                tc.setDuration(duration); // store duration on the connection for sorting/display
             }
             return connectionsList;
-        }
-
-        else {
+        } else {
+            // No direct connections found — try indirect routes (1-stop and 2-stops as implemented in DB)
             List<TrainConnection> indirectConnections = trainDB.findIndirectConnections(userDepartureCity, userArrivalCity);
-            for (TrainConnection tc : indirectConnections){
+            for (TrainConnection tc : indirectConnections) {
                 double duration = durationCalculator.computeAllTripDurations(tc);
                 tc.setDuration(duration);
             }
@@ -327,62 +351,72 @@ public class SystemDriver {
         }
     }
 
- private static Map<String,String> gatherFilters(){
-    return filters;
-}
+    //Return the currently-recorded filters map. Kept as a method to centralize potential future transformations.
+    private static Map<String, String> gatherFilters() {
+        return filters;
+    }
 
 
-    public static List<TrainConnection> toggleSort(String sortParameter, List<TrainConnection> trainConnections){
-        if (sortParameter.equals(lastSortParameter)){
-            ascending = !ascending;
-        }
 
-        else {
-            ascending = true;
+    /* ---------------------------------------------------------------------
+     * Sorting
+     * ------------------------------------------------------------------*/
+
+    /*
+     Toggle sorting order for the provided parameter. If the same parameter is requested twice in a row,
+     the ordering flips (ascending <-> descending). Otherwise ordering resets to ascending for the new parameter.
+     */
+    public static List<TrainConnection> toggleSort(String sortParameter, List<TrainConnection> trainConnections) {
+        if (sortParameter.equals(lastSortParameter)) {
+            ascending = !ascending; // flip order when clicking same column twice
+        } else {
+            ascending = true; // default to ascending when switching columns
             lastSortParameter = sortParameter;
         }
         sortConnections(sortParameter, trainConnections, ascending);
-        return trainConnections;
+        return trainConnections; // return the same list reference (sorted in place)
     }
 
+    //In-place sorting implementation. Uses comparators appropriate for the given parameter.
     private static void sortConnections(String sortParameter, List<TrainConnection> connectionsList, boolean ascending) {
-        if (sortParameter.equals("duration")){
+        if (sortParameter.equals("duration")) {
             connectionsList.sort((tc1, tc2) -> {
-                if (ascending){
+                if (ascending) {
                     return Double.compare(tc1.getDuration(), tc2.getDuration());
-                }
-
-                else {
+                } else {
                     return Double.compare(tc2.getDuration(), tc1.getDuration());
                 }
             });
-        }
-
-        else if (sortParameter.equals("firstClassRate")){
+        } else if (sortParameter.equals("firstClassRate")) {
             connectionsList.sort((tc1, tc2) -> {
-                if (ascending){
+                if (ascending) {
                     return Double.compare(tc1.getFirstClassRate(), tc2.getFirstClassRate());
-                }
-
-                else {
+                } else {
                     return Double.compare(tc2.getFirstClassRate(), tc1.getFirstClassRate());
                 }
             });
-        }
-
-        else if (sortParameter.equals("secondClassRate")){
+        } else if (sortParameter.equals("secondClassRate")) {
             connectionsList.sort((tc1, tc2) -> {
-                if (ascending){
+                if (ascending) {
                     return Double.compare(tc1.getSecondClassRate(), tc2.getSecondClassRate());
-                }
-
-                else {
+                } else {
                     return Double.compare(tc2.getSecondClassRate(), tc1.getSecondClassRate());
                 }
             });
         }
     }
 
+
+
+    /* ---------------------------------------------------------------------
+     * Transfer time calculation
+     * ------------------------------------------------------------------*/
+
+    /*
+     Compute the time (in hours) between the arrival of the first leg and the departure of the second leg.
+     The method assumes times in HH:MM format and handles overnight transfers by adding 24h when the second
+     departure time is earlier than the first arrival.
+     */
     private static double calculateTransferTime(TrainConnection firstLeg, TrainConnection secondLeg) {
         String firstArrival = firstLeg.getArrivalTime();
         String secondDeparture = secondLeg.getDepartureTime();
@@ -395,6 +429,7 @@ public class SystemDriver {
         int depHours = Integer.parseInt(depParts[0]);
         int depMinutes = Integer.parseInt(depParts[1]);
 
+        // if the second departure clock time is earlier than arrival, assume it's on the next day
         if (depHours < arrHours || (depHours == arrHours && depMinutes < arrMinutes)) {
             depHours += 24;
         }
@@ -408,27 +443,36 @@ public class SystemDriver {
     }
 
 
-    public static void updateInputs(String option, String value){
-         if (validateInput(option, value)){
-             filters.put(option, value);
-             recordInput(userArrivalCity, userDepartureCity, option, value);
-         }
-         else {
-             System.out.println("Invalid input. Please try again.");
-         }
-          List<TrainConnection> filteredConnections = search();
-        if (filteredConnections != null && !filteredConnections.isEmpty()){
+
+    /* ---------------------------------------------------------------------
+     * Filters, validation, recording
+     * ------------------------------------------------------------------*/
+
+    /*
+     Update the filters map with a single option; validate the value first. After recording the input,
+     re-run the search and (if results exist) show them and allow sorting.
+     option strings used by the UI: depDay, arrDay, trainType, depTime, arrTime,
+     minFirstClassPrice, maxFirstClassPrice, minSecondClassPrice, maxSecondClassPrice
+     */
+    public static void updateInputs(String option, String value) {
+        if (validateInput(option, value)) {
+            filters.put(option, value);
+            recordInput(userArrivalCity, userDepartureCity, option, value);
+        } else {
+            System.out.println("Invalid input. Please try again.");
+        }
+        List<TrainConnection> filteredConnections = search();
+        if (filteredConnections != null && !filteredConnections.isEmpty()) {
             System.out.println("Filters applied successfully. Found " + filteredConnections.size() + " connections.");
             displayAllConnections(filteredConnections, userDepartureCity, userArrivalCity);
             showSortingMenu(filteredConnections, userDepartureCity, userArrivalCity, new Scanner(System.in));
-        }
-        else {
-             System.out.println("No connections found with the applied filters.");
+        } else {
+            System.out.println("No connections found with the applied filters.");
         }
 
     }
 
-    // Sorting menu extracted for reuse after search and after filters
+    // Sorting menu reused after applying filters or after a search
     private static void showSortingMenu(List<TrainConnection> trainConnections, String departureCity, String arrivalCity, Scanner scanner) {
         boolean sortingMenu = true;
         while (sortingMenu) {
@@ -467,16 +511,19 @@ public class SystemDriver {
         }
     }
 
-    public static boolean validateInput(String option, String value){
-        switch (option){
-            case "depDay", "arrDay", "trainType": //departure day, arrival day, train type
-                 return value != null && !value.trim().isEmpty();
+    //Validate a single input option/value pair. Returns true if the value is acceptable for the option.
+    public static boolean validateInput(String option, String value) {
+        switch (option) {
+            case "depDay", "arrDay", "trainType": // departure day, arrival day, train type
+                return value != null && !value.trim().isEmpty();
             case "depTime", "arrTime": // departure time, arrival time
+                // Accepts 24-hour format
                 return value.matches("([01]?\\d|2[0-3]):[0-5]\\d");
-            case "minFirstClassPrice", "maxFirstClassPrice", "minSecondClassPrice", "maxSecondClassPrice": // min max prices
+            case "minFirstClassPrice", "maxFirstClassPrice", "minSecondClassPrice",
+                    "maxSecondClassPrice": // min/max prices
                 try {
-                double d = Double.parseDouble(value);
-                return d >= 0;
+                    double d = Double.parseDouble(value);
+                    return d >= 0;
                 } catch (NumberFormatException e) {
                     return false;
                 }
@@ -485,12 +532,20 @@ public class SystemDriver {
         }
     }
 
-    public static void recordInput(String arrivalCity, String departureCity, String option, String value){
+    public static void recordInput(String arrivalCity, String departureCity, String option, String value) {
+        // Small helper that prints the recorded input; could be extended to persist user preferences
         System.out.println("Recorded input for route " + departureCity + " → " + arrivalCity + ": "
-            + option + " = " + value);
+                + option + " = " + value);
     }
 
-    public static void bookTrip(int userTripOption){
+
+
+    /* ---------------------------------------------------------------------
+     * Booking Section
+     * ------------------------------------------------------------------*/
+
+    //Create a Trip object for the selected tripOptionNumber and collect reservations/tickets from the CLI.
+    public static void bookTrip(int userTripOption) {
 
         List<TrainConnection> trainConnections = search();
         List<TrainConnection> selectedRoutes = getRoutes(trainConnections, userTripOption, userDepartureCity, userArrivalCity);
@@ -536,44 +591,44 @@ public class SystemDriver {
 
     }
 
-
-
-    public static List<TrainConnection> getRoutes(List<TrainConnection> connections, int userOptionNumber) {
-        List<TrainConnection> result = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-        if (connections == null) {
-            System.out.println("Connections list is null.");
-            return result;
-        }
-        for (TrainConnection tc : connections) {
-            if (tc.getTripOptionNumber() == userOptionNumber) {
-                String key = tc.getRouteID() + "|" + tc.getDepartureCity() + "|" + tc.getArrivalCity() +
-                        "|" + tc.getDepartureTime() + "|" + tc.getArrivalTime();
-                if (!seen.contains(key)) {
-                    result.add(tc);
-                    seen.add(key);
-                }
-            }
-        }
-        System.out.println("Found " + result.size() + " unique connections for tripOptionNumber " + userOptionNumber + ":");
-        for (TrainConnection tc : result) {
-            System.out.println("RouteID: " + tc.getRouteID() +
-                    ", From: " + tc.getDepartureCity() +
-                    ", To: " + tc.getArrivalCity() +
-                    ", TripOptionNumber: " + tc.getTripOptionNumber());
-        }
-        return result;
-    }
-
-
-
-
-    public static Reservation createReservation(Client client){
+    public static Reservation createReservation(Client client) {
         Reservation r = new Reservation(client);
         return r;
     }
 
+    /*
+     Select a route (a List of TrainConnection legs) from the computed routes for the departure/arrival pair.
+     This variant builds route options and returns the N-th option.
+     */
+    public static List<TrainConnection> getRoutes(List<TrainConnection> trainConnections, int userOptionNumber, String departureCity, String arrivalCity) {
+        List<List<TrainConnection>> allRoutes = findAllRoutes(trainConnections, departureCity, arrivalCity);
+
+        // Find the minimum number of legs among all routes
+        int minLegs = allRoutes.stream().mapToInt(List::size).min().orElse(Integer.MAX_VALUE);
+
+        // Only keep routes with the minimum number of legs (prefer fewer stops)
+        List<List<TrainConnection>> filteredRoutes = allRoutes.stream()
+                .filter(route -> route.size() == minLegs)
+                .collect(Collectors.toList());
+
+        if (userOptionNumber < 1 || userOptionNumber > filteredRoutes.size()) {
+            System.out.println("Invalid trip option selected.");
+            return Collections.emptyList();
+        }
+        return filteredRoutes.get(userOptionNumber - 1);
+    }
 
 
+
+    /* ---------------------------------------------------------------------
+     * Small helpers for recording departure/arrival
+     * ------------------------------------------------------------------*/
+
+    public static void addArrival(String city) {
+        userArrivalCity = city;
+    }
+
+    public static void addDeparture(String city) {
+        userDepartureCity = city;
+    }
 }
-
