@@ -5,6 +5,7 @@ public class Client {
     private String firstName;
     private String lastName;
     private String email;
+    private int age;
     private String phoneNumber;
     private String paymentInformation;
 
@@ -40,6 +41,14 @@ public class Client {
         this.email = email;
     }
 
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
     public String getPhoneNumber() {
         return phoneNumber;
     }
@@ -55,4 +64,5 @@ public class Client {
     public void setPaymentInformation(String paymentInformation) {
         this.paymentInformation = paymentInformation;
     }
+
 }

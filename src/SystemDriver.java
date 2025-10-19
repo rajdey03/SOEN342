@@ -191,59 +191,109 @@ public class SystemDriver {
                 ", 2nd Class: " + tc.getSecondClassRate());
     }
 
-    private static void displayAllConnections(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
-        int i = 0;
-        int j = 0;
-        while (i < trainConnections.size()) {
+//    private static void displayAllConnections(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
+//        int i = 0;
+//        int j = 0;
+//        while (i < trainConnections.size()) {
+//
+//            System.out.println("\n--- Trip Option " + (++j) + " ---");
+//            trainConnections.get(i).setTripOptionNumber(j);
+//
+//            if (i + 2 < trainConnections.size() &&
+//                    trainConnections.get(i).getDepartureCity().equalsIgnoreCase(departureCity) &&
+//                    trainConnections.get(i+2).getArrivalCity().equalsIgnoreCase(arrivalCity)) {
+//                trainConnections.get(i+1).setTripOptionNumber(j);
+//                trainConnections.get(i+2).setTripOptionNumber(j);
+//                System.out.println("2-stop route:");
+//                displayConnection(trainConnections.get(i));
+//                displayConnection(trainConnections.get(i+1));
+//                displayConnection(trainConnections.get(i+2));
+//                System.out.println("Total Duration: " + (trainConnections.get(i).getDuration() + trainConnections.get(i+1).getDuration() +
+//                        trainConnections.get(i+2).getDuration() + calculateTransferTime(trainConnections.get(i), trainConnections.get(i+1)) +
+//                        calculateTransferTime(trainConnections.get(i+1), trainConnections.get(i+2))) + " hours");
+//                System.out.println("Duration Breakdown: ");
+//                System.out.println("\tFirst Leg Duration: " + trainConnections.get(i).getDuration() + " hours");
+//                System.out.println("\tFirst Transfer Time: " + calculateTransferTime(trainConnections.get(i), trainConnections.get(i+1)) + " hours");
+//                System.out.println("\tSecond Leg Duration: " + trainConnections.get(i+1).getDuration() + " hours");
+//                System.out.println("\tSecond Transfer Time: " + calculateTransferTime(trainConnections.get(i+1), trainConnections.get(i+2)) + " hours");
+//                System.out.println("\tThird Leg Duration: " + trainConnections.get(i+2).getDuration() + " hours");
+//                i += 3;
+//            }
 
-            System.out.println("\n--- Trip Option " + (++j) + " ---");
-            trainConnections.get(i).setTripOptionNumber(j);
-
-            if (i + 2 < trainConnections.size() &&
-                    trainConnections.get(i).getDepartureCity().equalsIgnoreCase(departureCity) &&
-                    trainConnections.get(i+2).getArrivalCity().equalsIgnoreCase(arrivalCity)) {
-                trainConnections.get(i+1).setTripOptionNumber(j);
-                trainConnections.get(i+2).setTripOptionNumber(j);
-                System.out.println("2-stop route:");
-                displayConnection(trainConnections.get(i));
-                displayConnection(trainConnections.get(i+1));
-                displayConnection(trainConnections.get(i+2));
-                System.out.println("Total Duration: " + (trainConnections.get(i).getDuration() + trainConnections.get(i+1).getDuration() +
-                        trainConnections.get(i+2).getDuration() + calculateTransferTime(trainConnections.get(i), trainConnections.get(i+1)) +
-                        calculateTransferTime(trainConnections.get(i+1), trainConnections.get(i+2))) + " hours");
-                System.out.println("Duration Breakdown: ");
-                System.out.println("\tFirst Leg Duration: " + trainConnections.get(i).getDuration() + " hours");
-                System.out.println("\tFirst Transfer Time: " + calculateTransferTime(trainConnections.get(i), trainConnections.get(i+1)) + " hours");
-                System.out.println("\tSecond Leg Duration: " + trainConnections.get(i+1).getDuration() + " hours");
-                System.out.println("\tSecond Transfer Time: " + calculateTransferTime(trainConnections.get(i+1), trainConnections.get(i+2)) + " hours");
-                System.out.println("\tThird Leg Duration: " + trainConnections.get(i+2).getDuration() + " hours");
-                i += 3;
-            }
-
-            else if (i + 1 < trainConnections.size() &&
-                    trainConnections.get(i).getDepartureCity().equalsIgnoreCase(departureCity) &&
-                    trainConnections.get(i).getArrivalCity().equalsIgnoreCase(trainConnections.get(i+1).getDepartureCity()) &&
-                    trainConnections.get(i+1).getArrivalCity().equalsIgnoreCase(arrivalCity)) {
-                trainConnections.get(i+1).setTripOptionNumber(j);
-                System.out.println("1-stop route:");
-                displayConnection(trainConnections.get(i));
-                displayConnection(trainConnections.get(i+1));
-                System.out.println("Total Duration: " + (trainConnections.get(i).getDuration() + trainConnections.get(i+1).getDuration() +
-                        calculateTransferTime(trainConnections.get(i), trainConnections.get(i+1))) + " hours");
-                System.out.println("Duration Breakdown: ");
-                System.out.println("\tFirst Leg Duration: " + trainConnections.get(i).getDuration() + " hours");
-                System.out.println("\tTransfer Time: " + calculateTransferTime(trainConnections.get(i), trainConnections.get(i+1)) + " hours");
-                System.out.println("\tSecond Leg Duration: " + trainConnections.get(i+1).getDuration() + " hours");
-                i += 2;
-            }
-
-            else {
-                System.out.println("Direct route:");
-                displayConnection(trainConnections.get(i));
-                System.out.println("Duration: " + trainConnections.get(i).getDuration() + " hours");
-                i++;
-            }
+    private static List<List<TrainConnection>> findAllRoutes(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
+        List<List<TrainConnection>> allRoutes = new ArrayList<>();
+        Map<String, List<TrainConnection>> depMap = new HashMap<>();
+        for (TrainConnection tc : trainConnections) {
+            depMap.computeIfAbsent(tc.getDepartureCity().toLowerCase(), k -> new ArrayList<>()).add(tc);
         }
+        findRoutesDFS(depMap, departureCity.toLowerCase(), arrivalCity.toLowerCase(), new ArrayList<>(), allRoutes, 0);
+        return allRoutes;
+    }
+
+    private static void findRoutesDFS(Map<String, List<TrainConnection>> depMap, String currentCity, String arrivalCity,
+                                      List<TrainConnection> path, List<List<TrainConnection>> allRoutes, int depth) {
+        if (depth > 2) return;
+        List<TrainConnection> nextConnections = depMap.getOrDefault(currentCity, Collections.emptyList());
+        for (TrainConnection tc : nextConnections) {
+            if (path.contains(tc)) continue; // prevent cycles
+            path.add(tc);
+            if (tc.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
+                allRoutes.add(new ArrayList<>(path));
+            } else {
+                findRoutesDFS(depMap, tc.getArrivalCity().toLowerCase(), arrivalCity, path, allRoutes, depth + 1);
+            }
+            path.remove(path.size() - 1);
+        }
+    }
+
+    private static void displayAllConnections(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
+        List<List<TrainConnection>> allRoutes = findAllRoutes(trainConnections, departureCity, arrivalCity);
+
+        // Find the minimum number of legs among all routes
+        int minLegs = allRoutes.stream().mapToInt(List::size).min().orElse(Integer.MAX_VALUE);
+
+        // Only keep routes with the minimum number of legs
+        List<List<TrainConnection>> filteredRoutes = allRoutes.stream()
+                .filter(route -> route.size() == minLegs)
+                .toList();
+
+        for (int i = 0; i < filteredRoutes.size(); i++) {
+            List<TrainConnection> route = filteredRoutes.get(i);
+            System.out.println("\n--- Trip Option " + (i + 1) + " ---");
+            for (TrainConnection tc : route) {
+                displayConnection(tc);
+            }
+            double totalDuration = 0.0;
+            for (int j = 0; j < route.size(); j++) {
+                totalDuration += route.get(j).getDuration();
+                if (j > 0) {
+                    totalDuration += calculateTransferTime(route.get(j - 1), route.get(j));
+                }
+            }
+            System.out.println("Total Duration: " + totalDuration + " hours");
+        }
+        if (filteredRoutes.isEmpty()) {
+            System.out.println("No valid routes found.");
+        }
+    }
+
+
+    public static List<TrainConnection> getRoutes(List<TrainConnection> trainConnections, int userOptionNumber, String departureCity, String arrivalCity) {
+        List<List<TrainConnection>> allRoutes = findAllRoutes(trainConnections, departureCity, arrivalCity);
+
+        // Find the minimum number of legs among all routes
+        int minLegs = allRoutes.stream().mapToInt(List::size).min().orElse(Integer.MAX_VALUE);
+
+        // Only keep routes with the minimum number of legs
+        List<List<TrainConnection>> filteredRoutes = allRoutes.stream()
+                .filter(route -> route.size() == minLegs)
+                .toList();
+
+        if (userOptionNumber < 1 || userOptionNumber > filteredRoutes.size()) {
+            System.out.println("Invalid trip option selected.");
+            return Collections.emptyList();
+        }
+        return filteredRoutes.get(userOptionNumber - 1);
     }
 
     public static void addArrival(String city){
@@ -441,7 +491,9 @@ public class SystemDriver {
     }
 
     public static void bookTrip(int userTripOption){
-        List<TrainConnection> selectedRoutes = getRoutes(search(), userTripOption);
+
+        List<TrainConnection> trainConnections = search();
+        List<TrainConnection> selectedRoutes = getRoutes(trainConnections, userTripOption, userDepartureCity, userArrivalCity);
         Trip trip = tripDB.createTrip(selectedRoutes);
 
         Scanner scanner = new Scanner(System.in);
@@ -453,6 +505,8 @@ public class SystemDriver {
             c.setFirstName(scanner.nextLine().trim());
             System.out.println("Enter your last name: ");
             c.setLastName(scanner.nextLine().trim());
+            System.out.println("Enter your age: ");
+            c.setAge(Integer.parseInt(scanner.nextLine().trim()));
             System.out.println("Enter your id: ");
             while (true) {
                 // to do: implement logic for validating unique numeric IDs
@@ -477,18 +531,42 @@ public class SystemDriver {
                 break;
             }
         }
+
+        System.out.println(trip.getSummary());
+
     }
 
-    
+
 
     public static List<TrainConnection> getRoutes(List<TrainConnection> connections, int userOptionNumber) {
+        List<TrainConnection> result = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
         if (connections == null) {
-            return Collections.emptyList();
+            System.out.println("Connections list is null.");
+            return result;
         }
-        return connections.stream()
-                .filter(tc -> tc.getTripOptionNumber() == userOptionNumber)
-                .collect(Collectors.toList());
+        for (TrainConnection tc : connections) {
+            if (tc.getTripOptionNumber() == userOptionNumber) {
+                String key = tc.getRouteID() + "|" + tc.getDepartureCity() + "|" + tc.getArrivalCity() +
+                        "|" + tc.getDepartureTime() + "|" + tc.getArrivalTime();
+                if (!seen.contains(key)) {
+                    result.add(tc);
+                    seen.add(key);
+                }
+            }
+        }
+        System.out.println("Found " + result.size() + " unique connections for tripOptionNumber " + userOptionNumber + ":");
+        for (TrainConnection tc : result) {
+            System.out.println("RouteID: " + tc.getRouteID() +
+                    ", From: " + tc.getDepartureCity() +
+                    ", To: " + tc.getArrivalCity() +
+                    ", TripOptionNumber: " + tc.getTripOptionNumber());
+        }
+        return result;
     }
+
+
+
 
     public static Reservation createReservation(Client client){
         Reservation r = new Reservation(client);
