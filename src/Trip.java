@@ -6,9 +6,12 @@ import java.util.List;
 public class Trip {
     private double tripDuration;
     private String tripID;
+    private String status;
     private List<Reservation> reservations;
+    private List<TrainConnection> routes;
 
-    public Trip() {
+    public Trip(List<TrainConnection> routes) {
+        this.routes = routes;
         this.tripDuration = 0.0;
         this.reservations = new ArrayList<>();
     }
@@ -37,8 +40,18 @@ public class Trip {
         this.reservations = reservations;
     }
 
-    public void addReservation(Reservation reservation) {
-        reservations.add(reservation);
+    public Reservation addReservation(Reservation r) {
+        reservations.add(r);
+        return r;
+    }
+
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public double computeTripDuration(TrainConnection tc) {

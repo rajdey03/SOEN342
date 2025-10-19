@@ -1,14 +1,15 @@
 package src;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class SystemDriver {
     static String userArrivalCity;
     static String userDepartureCity;
     static TrainConnectionDB trainDB = new TrainConnectionDB();
     static ClientDB clientDB = new ClientDB();
+    static TripDB tripDB = new TripDB();
+    static TicketDB ticketDB = new TicketDB();
     static String lastSortParameter = null;
     static boolean ascending = true;
     static Map<String,String> filters = new java.util.HashMap<>();
@@ -83,27 +84,8 @@ public class SystemDriver {
                             case "5":
                                 System.out.println("\nPlease select your desired trip from the displayed list above.");
                                 int userTripOption = Integer.parseInt(scanner.nextLine());
-//                                System.out.println("How many travellers?");
-//                                int numPassengers = Integer.parseInt(scanner.nextLine());
-                                Client c = new Client();
-                                System.out.println("Enter your first name: ");
-                                c.setFirstName(scanner.nextLine());
-                                System.out.println("Enter your last name: ");
-                                c.setLastName(scanner.nextLine());
-                                System.out.println("Enter your id");
-                                c.setClientId(Long.parseLong(scanner.nextLine())); // must be unique
+                                bookTrip(userTripOption);
 
-                                clientDB.addClient(c);
-
-                                Trip trip = new Trip();
-
-                                Reservation r = new Reservation();
-                                r.setClient(c);
-
-                                trip.addReservation(r);
-
-
-                                // bookTrip(arrivalCity, departureCity, routeIDs, client)
 
                                 break;
                             case "6":
@@ -455,5 +437,65 @@ public class SystemDriver {
 
     public static void recordInput(String arrivalCity, String departureCity, String option, String value){
         System.out.println("Recorded input for route " + departureCity + " → " + arrivalCity + ": "
-            + option + " = " + value);    }
+            + option + " = " + value);
+    }
+
+    public static void bookTrip(int userTripOption){
+        List<TrainConnection> selectedRoutes = getRoutes(search(), userTripOption);
+        Trip trip = tripDB.createTrip(selectedRoutes);
+
+        Scanner scanner = new Scanner(System.in);
+
+        while (true) {
+            Client c = clientDB.createClient();
+
+            System.out.println("Enter your first name: ");
+            c.setFirstName(scanner.nextLine().trim());
+            System.out.println("Enter your last name: ");
+            c.setLastName(scanner.nextLine().trim());
+            System.out.println("Enter your id: ");
+            while (true) {
+                // to do: implement logic for validating unique numeric IDs
+                String idInput = scanner.nextLine().trim();
+                try {
+                    c.setClientId(Long.parseLong(idInput));
+                    break;
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid id. Enter a numeric id:");
+                }
+            }
+
+            Reservation r = createReservation(c);
+
+            tripDB.addReservationToTrip(trip, r);
+
+            r.setTicket(ticketDB.createTicket());
+
+            System.out.println("Add another traveller? (y/n)");
+            String more = scanner.nextLine().trim().toLowerCase();
+            if (!more.equals("y") && !more.equals("yes")) {
+                break;
+            }
+        }
+    }
+
+    
+
+    public static List<TrainConnection> getRoutes(List<TrainConnection> connections, int userOptionNumber) {
+        if (connections == null) {
+            return Collections.emptyList();
+        }
+        return connections.stream()
+                .filter(tc -> tc.getTripOptionNumber() == userOptionNumber)
+                .collect(Collectors.toList());
+    }
+
+    public static Reservation createReservation(Client client){
+        Reservation r = new Reservation(client);
+        return r;
+    }
+
+
+
 }
+

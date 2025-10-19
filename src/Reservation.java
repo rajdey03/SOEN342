@@ -3,15 +3,19 @@ package src;
 import java.util.List;
 
 public class Reservation {
-    private List<Ticket> tickets;
+    private Ticket ticket;
     private Client client;
 
-    public List<Ticket> getTickets() {
-        return tickets;
+    public Reservation(Client client) {
+        this.client = client;
     }
 
-    public void setTickets(List<Ticket> tickets) {
-        this.tickets = tickets;
+    public Ticket getTicket() {
+        return ticket;
+    }
+
+    public void setTicket(Ticket ticket) {
+        this.ticket = ticket;
     }
 
     public Client getClient() {
