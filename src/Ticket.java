@@ -2,7 +2,7 @@ package src;
 
 public class Ticket {
     private int ticketId;
-    private int nextId = 1;
+    private static int nextId = 1;
     private double cost;
 
     public Ticket() {
