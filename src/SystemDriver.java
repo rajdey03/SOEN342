@@ -20,6 +20,7 @@ public class SystemDriver {
     static Map<String, String> filters = new HashMap<>();
 
     // sort toggling state: remember last parameter and whether the next sort should be ascending
+    List<List<TrainConnection>> filteredRoutes;
     static String lastSortParameter = null;
     static boolean ascending = true;
 
@@ -102,7 +103,8 @@ public class SystemDriver {
         }
 
         // Print the available options (direct & indirect routes are assembled by displayAllConnections)
-        displayAllConnections(trainConnections, departureCity, arrivalCity);
+        List<List<TrainConnection>> routes = getFilteredRoutes(trainConnections, departureCity, arrivalCity);
+        displayAllConnections(routes);
 
         // Allow the user to repeatedly toggle sorting or choose to book
         boolean subMenu = true;
@@ -112,16 +114,16 @@ public class SystemDriver {
             switch (subChoice) {
                 case "1":
                     // Toggle sort by duration (ascending first click, toggles each subsequent click)
-                    trainConnections = toggleSort("duration", trainConnections);
-                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    toggleSort("duration", routes);
+                    displayAllConnections(routes);
                     break;
                 case "2":
-                    trainConnections = toggleSort("firstClassRate", trainConnections);
-                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    toggleSort("firstClassRate", routes);
+                    displayAllConnections(routes);
                     break;
                 case "3":
-                    trainConnections = toggleSort("secondClassRate", trainConnections);
-                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    toggleSort("secondClassRate", routes);
+                    displayAllConnections(routes);
                     break;
                 case "4":
                     // back to main menu
@@ -254,7 +256,12 @@ public class SystemDriver {
      */
     private static List<List<TrainConnection>> findAllRoutes(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
         List<List<TrainConnection>> allRoutes = new ArrayList<>();
-        // Build a quick map: departureCityLowerCase -> list of outgoing connections
+
+        // Remove duplicate connections (requires equals/hashCode in TrainConnection)
+        trainConnections = trainConnections.stream()
+                .distinct() // implement equals/hashCode in TrainConnection
+                .collect(Collectors.toList());
+
         Map<String, List<TrainConnection>> depMap = new HashMap<>();
         for (TrainConnection tc : trainConnections) {
             depMap.computeIfAbsent(tc.getDepartureCity().toLowerCase(), k -> new ArrayList<>()).add(tc);
@@ -286,28 +293,34 @@ public class SystemDriver {
         }
     }
 
-    /*
-     Display all (minimal-leg) routes to the CLI. The presentation shows each route's legs and a computed total duration.
-     The method currently selects only routes with the minimal number of legs (e.g., if a direct route exists, 1-stop/2-stop routes are suppressed).
-     */
-    private static void displayAllConnections(List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
+    // Builds and returns all valid routes with the minimum number of legs between two cities.
+    private static List<List<TrainConnection>> getFilteredRoutes(
+            List<TrainConnection> trainConnections, String departureCity, String arrivalCity) {
+
         List<List<TrainConnection>> allRoutes = findAllRoutes(trainConnections, departureCity, arrivalCity);
 
         // Find the minimum number of legs among all routes
         int minLegs = allRoutes.stream().mapToInt(List::size).min().orElse(Integer.MAX_VALUE);
 
-        // Only keep routes with the minimum number of legs (user sees the 'best' leg-count options)
-        List<List<TrainConnection>> filteredRoutes = allRoutes.stream()
+        // Only keep routes with the minimum number of legs
+        return allRoutes.stream()
                 .filter(route -> route.size() == minLegs)
                 .collect(Collectors.toList());
+    }
 
-        for (int i = 0; i < filteredRoutes.size(); i++) {
-            List<TrainConnection> route = filteredRoutes.get(i);
+    private static void displayAllConnections(List<List<TrainConnection>> routes) {
+        if (routes.isEmpty()) {
+            System.out.println("No valid routes found.");
+            return;
+        }
+
+        for (int i = 0; i < routes.size(); i++) {
+            List<TrainConnection> route = routes.get(i);
             System.out.println("\n--- Trip Option " + (i + 1) + " ---");
             for (TrainConnection tc : route) {
                 displayConnection(tc);
             }
-            // Compute total duration = sum of individual leg durations + transfer times between legs
+
             double totalDuration = 0.0;
             for (int j = 0; j < route.size(); j++) {
                 totalDuration += route.get(j).getDuration();
@@ -317,11 +330,7 @@ public class SystemDriver {
             }
             System.out.println("Total Duration: " + totalDuration + " hours");
         }
-        if (filteredRoutes.isEmpty()) {
-            System.out.println("No valid routes found.");
-        }
     }
-
 
 
     /* ---------------------------------------------------------------------
@@ -366,46 +375,49 @@ public class SystemDriver {
      Toggle sorting order for the provided parameter. If the same parameter is requested twice in a row,
      the ordering flips (ascending <-> descending). Otherwise ordering resets to ascending for the new parameter.
      */
-    public static List<TrainConnection> toggleSort(String sortParameter, List<TrainConnection> trainConnections) {
+    public static List<List<TrainConnection>> toggleSort(
+            String sortParameter, List<List<TrainConnection>> routes) {
+
         if (sortParameter.equals(lastSortParameter)) {
-            ascending = !ascending; // flip order when clicking same column twice
+            ascending = !ascending;
         } else {
-            ascending = true; // default to ascending when switching columns
+            ascending = true;
             lastSortParameter = sortParameter;
         }
-        sortConnections(sortParameter, trainConnections, ascending);
-        return trainConnections; // return the same list reference (sorted in place)
-    }
 
-    //In-place sorting implementation. Uses comparators appropriate for the given parameter.
-    private static void sortConnections(String sortParameter, List<TrainConnection> connectionsList, boolean ascending) {
         if (sortParameter.equals("duration")) {
-            connectionsList.sort((tc1, tc2) -> {
-                if (ascending) {
-                    return Double.compare(tc1.getDuration(), tc2.getDuration());
-                } else {
-                    return Double.compare(tc2.getDuration(), tc1.getDuration());
-                }
-            });
+            routes.sort(Comparator.comparingDouble(SystemDriver::computeTotalDuration));
+            if (!ascending) Collections.reverse(routes);
         } else if (sortParameter.equals("firstClassRate")) {
-            connectionsList.sort((tc1, tc2) -> {
-                if (ascending) {
-                    return Double.compare(tc1.getFirstClassRate(), tc2.getFirstClassRate());
-                } else {
-                    return Double.compare(tc2.getFirstClassRate(), tc1.getFirstClassRate());
-                }
-            });
+            routes.sort(Comparator.comparingDouble(SystemDriver::computeAverageFirstClassRate));
+            if (!ascending) Collections.reverse(routes);
         } else if (sortParameter.equals("secondClassRate")) {
-            connectionsList.sort((tc1, tc2) -> {
-                if (ascending) {
-                    return Double.compare(tc1.getSecondClassRate(), tc2.getSecondClassRate());
-                } else {
-                    return Double.compare(tc2.getSecondClassRate(), tc1.getSecondClassRate());
-                }
-            });
+            routes.sort(Comparator.comparingDouble(SystemDriver::computeAverageSecondClassRate));
+            if (!ascending) Collections.reverse(routes);
         }
+
+        return routes;
     }
 
+    /*
+     Helpers to compute sorting keys for a route (a List of TrainConnection objects)
+  */
+    private static double computeTotalDuration(List<TrainConnection> route) {
+        double total = 0.0;
+        for (int i = 0; i < route.size(); i++) {
+            total += route.get(i).getDuration();
+            if (i > 0) total += calculateTransferTime(route.get(i - 1), route.get(i));
+        }
+        return total;
+    }
+
+    private static double computeAverageFirstClassRate(List<TrainConnection> route) {
+        return route.stream().mapToDouble(TrainConnection::getFirstClassRate).average().orElse(Double.MAX_VALUE);
+    }
+
+    private static double computeAverageSecondClassRate(List<TrainConnection> route) {
+        return route.stream().mapToDouble(TrainConnection::getSecondClassRate).average().orElse(Double.MAX_VALUE);
+    }
 
 
     /* ---------------------------------------------------------------------
@@ -462,9 +474,10 @@ public class SystemDriver {
             System.out.println("Invalid input. Please try again.");
         }
         List<TrainConnection> filteredConnections = search();
+        List<List<TrainConnection>> routes = getFilteredRoutes(filteredConnections, userDepartureCity, userArrivalCity);
         if (filteredConnections != null && !filteredConnections.isEmpty()) {
             System.out.println("Filters applied successfully. Found " + filteredConnections.size() + " connections.");
-            displayAllConnections(filteredConnections, userDepartureCity, userArrivalCity);
+            displayAllConnections(routes);
             showSortingMenu(filteredConnections, userDepartureCity, userArrivalCity, new Scanner(System.in));
         } else {
             System.out.println("No connections found with the applied filters.");
@@ -484,18 +497,20 @@ public class SystemDriver {
             System.out.println("5. Exit");
             System.out.print("Select an option: ");
             String sortChoice = scanner.nextLine();
+
+            List<List<TrainConnection>> routes = getFilteredRoutes(trainConnections, departureCity, arrivalCity);
             switch (sortChoice) {
                 case "1":
-                    trainConnections = toggleSort("duration", trainConnections);
-                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    toggleSort("duration", routes);
+                    displayAllConnections(routes);
                     break;
                 case "2":
-                    trainConnections = toggleSort("firstClassRate", trainConnections);
-                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    toggleSort("firstClassRate", routes);
+                    displayAllConnections(routes);
                     break;
                 case "3":
-                    trainConnections = toggleSort("secondClassRate", trainConnections);
-                    displayAllConnections(trainConnections, departureCity, arrivalCity);
+                    toggleSort("secondClassRate", routes);
+                    displayAllConnections(routes);
                     break;
                 case "4":
                     sortingMenu = false;

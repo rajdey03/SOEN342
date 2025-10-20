@@ -145,7 +145,7 @@ public class Trip {
                 String age = (c != null) ? String.valueOf(c.getAge()) : "n/a";
                 String id = (c != null) ? safe(String.valueOf(c.getClientId())) : "n/a";
                 String ticketId = (r.getTicket() != null)
-                        ? String.format("TK-%03d", r.getTicket().getTicketId())
+                        ? String.format("%03d", r.getTicket().getTicketId())
                         : "n/a";
                 sb.append(String.format("%-16s %-4s %-8s %-14s\n", name, age, id, ticketId));            }
         } else {
