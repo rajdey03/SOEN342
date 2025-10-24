@@ -15,6 +15,7 @@ public class SystemDriver {
     static ClientDB clientDB = new ClientDB();
     static TripDB tripDB = new TripDB();
     static TicketDB ticketDB = new TicketDB();
+    static Client client;
 
     // filters map holds optional filter values keyed by filter name (e.g. "depDay" -> "monday")
     static Map<String, String> filters = new HashMap<>();
@@ -28,6 +29,8 @@ public class SystemDriver {
         Scanner scanner = new Scanner(System.in);
         try {
             trainDB.loadCSV(CSV_PATH);
+            clientDB.loadClientsFromFile("clients.txt"); // Load saved clients
+        System.out.println("Loaded " + clientDB.getClients().size() + " clients from file.");
         } catch (java.io.IOException e) {
             e.printStackTrace();
         }
@@ -42,31 +45,41 @@ public class SystemDriver {
 
     private static void runMainLoop(Scanner scanner) {
         boolean running = true;
+        String departureCity = "";
+        String arrivalCity = "";
         while (running) {
             System.out.println("------------ Train Connection System ------------");
             System.out.println("Welcome to the Train Connection System!");
-
-            System.out.print("Enter departure city: ");
-            String departureCity = scanner.nextLine().trim();
-            addDeparture(departureCity); // record shared state
-
-            System.out.print("Enter arrival city: ");
-            String arrivalCity = scanner.nextLine().trim();
-            addArrival(arrivalCity);
 
             printMainMenu();
             String choice = scanner.nextLine().trim();
 
             switch (choice) {
                 case "1":
+                    System.out.print("Enter departure city: ");
+                    departureCity = scanner.nextLine().trim();
+                    addDeparture(departureCity); // record shared state
+
+                    System.out.print("Enter arrival city: ");
+                    arrivalCity = scanner.nextLine().trim();
+                    addArrival(arrivalCity);
                     // Run search and provide sorting/booking submenu
                     handleSearchList(scanner, departureCity, arrivalCity);
                     break;
                 case "2":
-                    // Add optional inputs/filters
-                    handleAddInputsFlow(scanner);
-                    break;
+                    if (departureCity == "" || arrivalCity == ""){
+                        System.out.println("Invalid option. Please try again.");
+                        break;
+                    }
+                    else{
+                        handleAddInputsFlow(scanner);
+                        break;
+                    }
                 case "3":
+                    //validate user logic maybe ill make a method for it
+                    login();
+                    break;
+                case "4":
                     running = false;
                     System.out.println("Exiting the system. Thank you for using our Train Connection System!");
                     break;
@@ -78,10 +91,11 @@ public class SystemDriver {
     }
 
     private static void printMainMenu() {
-        System.out.println("\n------------ Choose an option: ------------");
+        System.out.println("\nChoose an option:");
         System.out.println("1. Search for connections");
         System.out.println("2. Add additional inputs");
-        System.out.println("3. Exit");
+        System.out.println("3. View My Trips");
+        System.out.println("4. Exit");
         System.out.print("Select an option: ");
     }
 
@@ -135,6 +149,7 @@ public class SystemDriver {
                     try {
                         int userTripOption = Integer.parseInt(scanner.nextLine().trim());
                         bookTrip(userTripOption);
+                        subMenu = false;
                     } catch (NumberFormatException e) {
                         System.out.println("Invalid number. Returning to submenu.");
                     }
@@ -161,7 +176,7 @@ public class SystemDriver {
         System.out.println("6. Exit");
         System.out.print("Select an option: ");
     }
-
+   
 
 
     /* ---------------------------------------------------------------------
@@ -558,6 +573,30 @@ public class SystemDriver {
     /* ---------------------------------------------------------------------
      * Booking Section
      * ------------------------------------------------------------------*/
+    //Login register so they can view their trip using last name and id
+    public static void login() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter your last name:");
+        String lastName = scanner.nextLine().trim().toLowerCase();
+        System.out.println("Enter your id:");
+        long id;
+        try {
+            id = Long.parseLong(scanner.nextLine().trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid ID format.");
+            return;
+        }
+
+        int clientIndex = clientDB.findClient(lastName, id);
+        if (clientIndex != -1) {
+            System.out.println("Logged in!");
+            client = clientDB.getClients().get(clientIndex);
+            System.out.println(client);
+            System.out.println("age: " + client.getAge());
+        } else {
+            System.out.println("Couldn't find account!");
+        }
+    }
 
     //Create a Trip object for the selected tripOptionNumber and collect reservations/tickets from the CLI.
     public static void bookTrip(int userTripOption) {
