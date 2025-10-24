@@ -76,8 +76,17 @@ public class SystemDriver {
                         break;
                     }
                 case "3":
-                    //validate user logic maybe ill make a method for it
                     login();
+                    List<Trip> clientTrips = tripDB.getTripsForClient(client);
+
+                    if (clientTrips.isEmpty()) {
+                        System.out.println("No trips found for " + client.getFirstName() + " " + client.getLastName());
+                    } else {
+                        System.out.println("\n=== Trips for " + client.getFirstName() + " " + client.getLastName() + " ===\n");
+                        for (Trip t : clientTrips) {
+                        System.out.println(t.getSummary());
+                        }
+                    }
                     break;
                 case "4":
                     running = false;
@@ -589,10 +598,7 @@ public class SystemDriver {
 
         int clientIndex = clientDB.findClient(lastName, id);
         if (clientIndex != -1) {
-            System.out.println("Logged in!");
             client = clientDB.getClients().get(clientIndex);
-            System.out.println(client);
-            System.out.println("age: " + client.getAge());
         } else {
             System.out.println("Couldn't find account!");
         }

@@ -30,4 +30,21 @@ public class TripDB {
         t.addReservation(r);
     }
 
+    
+    public List<Trip> getTripsForClient(Client client) {
+        List<Trip> clientTrips = new ArrayList<>();
+        if (client == null) return clientTrips;
+
+        for (Trip trip : trips) {
+            for (Reservation r : trip.getReservations()) {
+                if (r.getClient() != null && r.getClient().getClientId() == client.getClientId()) {
+                    clientTrips.add(trip);
+                    break; 
+                }
+            }
+        }
+        return clientTrips;
+    }
+
 }
+
