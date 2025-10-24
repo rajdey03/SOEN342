@@ -29,7 +29,8 @@ public class SystemDriver {
         Scanner scanner = new Scanner(System.in);
         try {
             trainDB.loadCSV(CSV_PATH);
-            clientDB.loadClientsFromFile("clients.txt"); // Load saved clients
+            clientDB.loadClientsFromFile("clients.txt"); // load saved clients
+            tripDB.loadTripsFromFile("trips.txt");  // load trips 
         System.out.println("Loaded " + clientDB.getClients().size() + " clients from file.");
         } catch (java.io.IOException e) {
             e.printStackTrace();
@@ -76,11 +77,15 @@ public class SystemDriver {
                         break;
                     }
                 case "3":
-                    login();
+                    boolean success = login();
                     List<Trip> clientTrips = tripDB.getTripsForClient(client);
 
-                    if (clientTrips.isEmpty()) {
-                        System.out.println("No trips found for " + client.getFirstName() + " " + client.getLastName());
+                    if (!success) {
+                        System.out.println("Login failed. Returning to main menu.");
+                        break;
+                    }
+                    if (clientTrips.isEmpty() && success) {
+                        System.out.println("No trips found for " + client.getFirstName() + " " + client.getLastName() + ".\n");
                     } else {
                         System.out.println("\n=== Trips for " + client.getFirstName() + " " + client.getLastName() + " ===\n");
                         for (Trip t : clientTrips) {
@@ -92,10 +97,7 @@ public class SystemDriver {
                     running = false;
                     System.out.println("Exiting the system. Thank you for using our Train Connection System!");
                     break;
-                default:
-                    System.out.println("Invalid option. Please try again.");
-                    break;
-            }
+                }
         }
     }
 
@@ -583,7 +585,7 @@ public class SystemDriver {
      * Booking Section
      * ------------------------------------------------------------------*/
     //Login register so they can view their trip using last name and id
-    public static void login() {
+    public static boolean login() {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Enter your last name:");
         String lastName = scanner.nextLine().trim().toLowerCase();
@@ -593,14 +595,16 @@ public class SystemDriver {
             id = Long.parseLong(scanner.nextLine().trim());
         } catch (NumberFormatException e) {
             System.out.println("Invalid ID format.");
-            return;
+            return false;
         }
 
         int clientIndex = clientDB.findClient(lastName, id);
         if (clientIndex != -1) {
             client = clientDB.getClients().get(clientIndex);
+            System.out.println("Login successful. Welcome, " + client.getFirstName() + " " + client.getLastName() + "!");
+            return true;
         } else {
-            System.out.println("Couldn't find account!");
+            return false;
         }
     }
 
