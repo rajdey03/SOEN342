@@ -174,7 +174,6 @@ public class Trip {
         sb.append("________________________________________________\n");
 
         sb.append("\nStatus: " + (status == null ? "CURRENT" : status.toUpperCase()) + "\n");
-        sb.append("Your tickets have been saved. Thank you for booking with us!\n");
 
         return sb.toString();
     }

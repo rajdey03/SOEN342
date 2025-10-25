@@ -21,7 +21,6 @@ public class SystemDriver {
     static Map<String, String> filters = new HashMap<>();
 
     // sort toggling state: remember last parameter and whether the next sort should be ascending
-    List<List<TrainConnection>> filteredRoutes;
     static String lastSortParameter = null;
     static boolean ascending = true;
 
@@ -30,7 +29,7 @@ public class SystemDriver {
         try {
             trainDB.loadCSV(CSV_PATH);
             clientDB.loadClientsFromFile("clients.txt"); // load saved clients
-            tripDB.loadTripsFromFile("trips.txt");  // load trips 
+            tripDB.loadTripsFromFile("trips.txt");  // load trips
         System.out.println("Loaded " + clientDB.getClients().size() + " clients from file.");
         } catch (java.io.IOException e) {
             e.printStackTrace();
@@ -68,29 +67,23 @@ public class SystemDriver {
                     handleSearchList(scanner, departureCity, arrivalCity);
                     break;
                 case "2":
-                    if (departureCity == "" || arrivalCity == ""){
-                        System.out.println("Invalid option. Please try again.");
+                    if (departureCity.isEmpty() || arrivalCity.isEmpty()) {
+                        System.out.println("Please set departure and arrival cities first (use option 1).");
                         break;
-                    }
-                    else{
+                    } else {
                         handleAddInputsFlow(scanner);
                         break;
                     }
                 case "3":
-                    boolean success = login();
-                    List<Trip> clientTrips = tripDB.getTripsForClient(client);
-
-                    if (!success) {
-                        System.out.println("Login failed. Returning to main menu.");
-                        break;
-                    }
-                    if (clientTrips.isEmpty() && success) {
-                        System.out.println("No trips found for " + client.getFirstName() + " " + client.getLastName() + ".\n");
-                    } else {
-                        System.out.println("\n=== Trips for " + client.getFirstName() + " " + client.getLastName() + " ===\n");
-                        for (Trip t : clientTrips) {
-                        System.out.println(t.getSummary());
-                        }
+                    // Prompt the user for credentials and display their trips via viewTrips
+                    System.out.print("Enter your last name: ");
+                    String lastNameInput = scanner.nextLine().trim();
+                    System.out.print("Enter your id: ");
+                    try {
+                        long idInput = Long.parseLong(scanner.nextLine().trim());
+                        viewTrips(lastNameInput, idInput);
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid ID format. Returning to main menu.");
                     }
                     break;
                 case "4":
@@ -187,7 +180,7 @@ public class SystemDriver {
         System.out.println("6. Exit");
         System.out.print("Select an option: ");
     }
-   
+
 
 
     /* ---------------------------------------------------------------------
@@ -355,6 +348,10 @@ public class SystemDriver {
                 }
             }
             System.out.println("Total Duration: " + totalDuration + " hours");
+
+            double avgFirst = route.stream().mapToDouble(TrainConnection::getFirstClassRate).average().orElse(Double.NaN);
+            double avgSecond = route.stream().mapToDouble(TrainConnection::getSecondClassRate).average().orElse(Double.NaN);
+            System.out.printf("Average 1st Class Rate: %.2f, Average 2nd Class Rate: %.2f%n", avgFirst, avgSecond);
         }
     }
 
@@ -495,7 +492,8 @@ public class SystemDriver {
     public static void updateInputs(String option, String value) {
         if (validateInput(option, value)) {
             filters.put(option, value);
-            recordInput(userArrivalCity, userDepartureCity, option, value);
+            // recordInput expects departureCity, arrivalCity
+            recordInput(userDepartureCity, userArrivalCity, option, value);
         } else {
             System.out.println("Invalid input. Please try again.");
         }
@@ -520,7 +518,8 @@ public class SystemDriver {
             System.out.println("2. Sort by First Class Rate");
             System.out.println("3. Sort by Second Class Rate");
             System.out.println("4. Go back");
-            System.out.println("5. Exit");
+            System.out.println("5. Select your connection(s)");
+            System.out.println("6. Exit");
             System.out.print("Select an option: ");
             String sortChoice = scanner.nextLine();
 
@@ -542,6 +541,17 @@ public class SystemDriver {
                     sortingMenu = false;
                     break;
                 case "5":
+                    // Book a trip
+                    System.out.println("\nPlease select your desired trip from the displayed list above.");
+                    try {
+                        int userTripOption = Integer.parseInt(scanner.nextLine().trim());
+                        bookTrip(userTripOption);
+                        sortingMenu = false;
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid number. Returning to sorting menu.");
+                    }
+                    break;
+                case "6":
                     System.out.println("Exiting the system. Thank you for using our Train Connection System!");
                     System.exit(0);
                     break;
@@ -573,7 +583,7 @@ public class SystemDriver {
         }
     }
 
-    public static void recordInput(String arrivalCity, String departureCity, String option, String value) {
+    public static void recordInput(String departureCity, String arrivalCity, String option, String value) {
         // Small helper that prints the recorded input; could be extended to persist user preferences
         System.out.println("Recorded input for route " + departureCity + " → " + arrivalCity + ": "
                 + option + " = " + value);
@@ -652,6 +662,8 @@ public class SystemDriver {
         }
 
         System.out.println(trip.getSummary());
+        System.out.println("Your tickets have been saved. Thank you for booking with us!\n");
+
 
     }
 
@@ -694,5 +706,31 @@ public class SystemDriver {
 
     public static void addDeparture(String city) {
         userDepartureCity = city;
+    }
+
+    /*
+      Lookup a client by last name and id, then print that client's trips (if any).
+     */
+    public static void viewTrips(String lastName, long clientID) {
+        if (lastName == null) lastName = "";
+        int clientIndex = clientDB.findClient(lastName.toLowerCase(), clientID);
+        if (clientIndex == -1) {
+            System.out.println("Client not found. Returning to main menu.");
+            return;
+        }
+
+        Client found = clientDB.getClients().get(clientIndex);
+        System.out.println("Login successful. Welcome, " + found.getFirstName() + " " + found.getLastName() + "!");
+        List<Trip> clientTrips = tripDB.getTripsForClient(found);
+
+        if (clientTrips == null || clientTrips.isEmpty()) {
+            System.out.println("No trips found for " + found.getFirstName() + " " + found.getLastName() + ".\n");
+            return;
+        }
+
+        System.out.println("\n=== Trips for " + found.getFirstName() + " " + found.getLastName() + " ===\n");
+        for (Trip t : clientTrips) {
+            System.out.println(t.getSummary());
+        }
     }
 }
