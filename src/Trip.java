@@ -10,6 +10,7 @@ public class Trip {
     private String status;
     private List<Reservation> reservations;
     private List<TrainConnection> routes;
+    private Client client;
 
     public Trip() {
         this.tripDuration = 0.0;
@@ -38,6 +39,25 @@ public class Trip {
 
     public void setTripId(String tripID) {
         this.tripId = tripId;
+    }
+
+    public Client getClient() {
+        return client;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
+    }
+
+    public long getClientId() {
+        return client != null ? client.getClientId() : -1;
+    }
+
+    public long setClientId(long clientId) {
+        if (client != null) {
+            client.setClientId(clientId);
+        }
+        return clientId;
     }
 
     private static String generateTripId() {
@@ -154,7 +174,6 @@ public class Trip {
         sb.append("________________________________________________\n");
 
         sb.append("\nStatus: " + (status == null ? "CURRENT" : status.toUpperCase()) + "\n");
-        sb.append("Your tickets have been saved. Thank you for booking with us!\n");
 
         return sb.toString();
     }
