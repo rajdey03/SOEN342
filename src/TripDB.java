@@ -81,7 +81,7 @@ public class TripDB {
                 if (parts.length >= 7) {
                     Trip t = new Trip();
                     t.setTripId((parts[0]));
-                    t.setClientId(Long.parseLong(parts[1]));
+                    t.setClientId((parts[1]));
                     t.setTripDuration(Double.parseDouble(parts[2]));
                     t.setStatus(parts[3]);
                     trips.add(t);

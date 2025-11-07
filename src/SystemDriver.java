@@ -28,7 +28,7 @@ public class SystemDriver {
         Scanner scanner = new Scanner(System.in);
         try {
             trainDB.loadCSV(CSV_PATH);
-            clientDB.loadClientsFromFile("clients.txt"); // load saved clients
+            //clientDB.loadClientsFromFile("clients.txt"); // load saved clients
             tripDB.loadTripsFromFile("trips.txt");  // load trips
         System.out.println("Loaded " + clientDB.getClients().size() + " clients from file.");
         } catch (java.io.IOException e) {
@@ -79,12 +79,8 @@ public class SystemDriver {
                     System.out.print("Enter your last name: ");
                     String lastNameInput = scanner.nextLine().trim();
                     System.out.print("Enter your id: ");
-                    try {
-                        long idInput = Long.parseLong(scanner.nextLine().trim());
-                        viewTrips(lastNameInput, idInput);
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid ID format. Returning to main menu.");
-                    }
+                    String idInput = scanner.nextLine().trim();
+                    viewTrips(lastNameInput, idInput);
                     break;
                 case "4":
                     running = false;
@@ -600,17 +596,11 @@ public class SystemDriver {
         System.out.println("Enter your last name:");
         String lastName = scanner.nextLine().trim().toLowerCase();
         System.out.println("Enter your id:");
-        long id;
-        try {
-            id = Long.parseLong(scanner.nextLine().trim());
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid ID format.");
-            return false;
-        }
+        String id = scanner.nextLine().trim().toLowerCase();
 
-        int clientIndex = clientDB.findClient(lastName, id);
-        if (clientIndex != -1) {
-            client = clientDB.getClients().get(clientIndex);
+        Client client = clientDB.getClientByLastNameAndID(lastName, id);
+        if (client != null) {
+            //client = clientDB.getClients().get(clientIndex);
             System.out.println("Login successful. Welcome, " + client.getFirstName() + " " + client.getLastName() + "!");
             return true;
         } else {
@@ -709,24 +699,24 @@ public static void bookTrip(int userTripOption) {
     /*
       Lookup a client by last name and id, then print that client's trips (if any).
      */
-    public static void viewTrips(String lastName, long clientID) {
+    public static void viewTrips(String lastName, String clientID) {
         if (lastName == null) lastName = "";
-        int clientIndex = clientDB.findClient(lastName.toLowerCase(), clientID);
-        if (clientIndex == -1) {
+        Client client = clientDB.getClientByLastNameAndID(lastName.toLowerCase(), clientID);
+        if (client == null) {
             System.out.println("Client not found. Returning to main menu.");
             return;
         }
 
-        Client found = clientDB.getClients().get(clientIndex);
-        System.out.println("Login successful. Welcome, " + found.getFirstName() + " " + found.getLastName() + "!");
-        List<Trip> clientTrips = tripDB.getTripsForClient(found);
+        //Client found = clientDB.getClients().get(clientIndex);
+        System.out.println("Login successful. Welcome, " + client.getFirstName() + " " + client.getLastName() + "!");
+        List<Trip> clientTrips = tripDB.getTripsForClient(client);
 
         if (clientTrips == null || clientTrips.isEmpty()) {
-            System.out.println("No trips found for " + found.getFirstName() + " " + found.getLastName() + ".\n");
+            System.out.println("No trips found for " + client.getFirstName() + " " + client.getLastName() + ".\n");
             return;
         }
 
-        System.out.println("\n=== Trips for " + found.getFirstName() + " " + found.getLastName() + " ===\n");
+        System.out.println("\n=== Trips for " + client.getFirstName() + " " + client.getLastName() + " ===\n");
         for (Trip t : clientTrips) {
             System.out.println(t.getSummary());
         }
