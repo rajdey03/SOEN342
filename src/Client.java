@@ -1,16 +1,16 @@
 package src;
 
 public class Client {
-    private long clientId;
+    private String clientId;
     private String firstName;
     private String lastName;
     private int age;
 
-    public long getClientId() {
+    public String getClientId() {
         return clientId;
     }
 
-    public void setClientId(long clientId) {
+    public void setClientId(String clientId) {
         this.clientId = clientId;
     }
 

@@ -619,53 +619,51 @@ public class SystemDriver {
     }
 
     //Create a Trip object for the selected tripOptionNumber and collect reservations/tickets from the CLI.
-    public static void bookTrip(int userTripOption) {
+public static void bookTrip(int userTripOption) {
 
-        List<TrainConnection> trainConnections = search();
-        List<TrainConnection> selectedRoutes = getRoutes(trainConnections, userTripOption, userDepartureCity, userArrivalCity);
-        Trip trip = tripDB.createTrip(selectedRoutes);
+    List<TrainConnection> trainConnections = search();
+    List<TrainConnection> selectedRoutes = getRoutes(trainConnections, userTripOption, userDepartureCity, userArrivalCity);
+    Trip trip = tripDB.createTrip(selectedRoutes);
 
-        Scanner scanner = new Scanner(System.in);
+    Scanner scanner = new Scanner(System.in);
 
-        while (true) {
-            Client c = clientDB.createClient();
-
-            System.out.println("Enter your first name: ");
-            c.setFirstName(scanner.nextLine().trim());
-            System.out.println("Enter your last name: ");
-            c.setLastName(scanner.nextLine().trim());
-            System.out.println("Enter your age: ");
-            c.setAge(Integer.parseInt(scanner.nextLine().trim()));
-            System.out.println("Enter your id: ");
-            while (true) {
-                // to do: implement logic for validating unique numeric IDs
-                String idInput = scanner.nextLine().trim();
-                try {
-                    c.setClientId(Long.parseLong(idInput));
-                    break;
-                } catch (NumberFormatException e) {
-                    System.out.println("Invalid id. Enter a numeric id:");
-                }
-            }
-
-            Reservation r = createReservation(c);
-
-            tripDB.addReservationToTrip(trip, r);
-
-            r.setTicket(ticketDB.createTicket());
-
-            System.out.println("Add another traveller? (y/n)");
-            String more = scanner.nextLine().trim().toLowerCase();
-            if (!more.equals("y") && !more.equals("yes")) {
-                break;
-            }
+    while (true) {
+        // Collect client information FIRST
+        System.out.println("Enter your first name: ");
+        String firstName = scanner.nextLine().trim();
+        
+        System.out.println("Enter your last name: ");
+        String lastName = scanner.nextLine().trim();
+        
+        System.out.println("Enter your age: ");
+        int age = Integer.parseInt(scanner.nextLine().trim());
+        
+        // Create client with all info at once (UUID is auto-generated)
+        Client c = clientDB.createClient(firstName, lastName, age);
+        
+        if (c == null) {
+            System.out.println("Failed to register client. Please try again.");
+            continue;
         }
+        
+        System.out.println("Client registered with ID: " + c.getClientId());
 
         System.out.println(trip.getSummary());
         System.out.println("Your tickets have been saved. Thank you for booking with us!\n");
 
+        Reservation r = createReservation(c);
+        tripDB.addReservationToTrip(trip, r);
+        r.setTicket(ticketDB.createTicket());
 
+        System.out.println("Add another traveller? (y/n)");
+        String more = scanner.nextLine().trim().toLowerCase();
+        if (!more.equals("y") && !more.equals("yes")) {
+            break;
+        }
     }
+
+    System.out.println(trip.getSummary());
+}
 
     public static Reservation createReservation(Client client) {
         Reservation r = new Reservation(client);

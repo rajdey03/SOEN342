@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class Trip {
+
     private double tripDuration;
     private String tripId;
     private String status;
@@ -49,22 +50,21 @@ public class Trip {
         this.client = client;
     }
 
-    public long getClientId() {
-        return client != null ? client.getClientId() : -1;
+    public String getClientId() {  // Changed from long to String
+        return client != null ? client.getClientId() : null;  // Changed from -1 to null
     }
 
-    public long setClientId(long clientId) {
+    public void setClientId(String clientId) {  // Changed from long to String
         if (client != null) {
             client.setClientId(clientId);
         }
-        return clientId;
     }
 
     private static String generateTripId() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     }
 
-        public List<Reservation> getReservations() {
+    public List<Reservation> getReservations() {
         return reservations;
     }
 
@@ -76,7 +76,6 @@ public class Trip {
         reservations.add(r);
         return r;
     }
-
 
     public String getStatus() {
         return status;
@@ -116,7 +115,7 @@ public class Trip {
         this.tripDuration = durationInMinutes / 60.0;
         return this.tripDuration;
     }
-    
+
     public String getSummary() {
         StringBuilder sb = new StringBuilder();
         sb.append("\n");
@@ -145,7 +144,9 @@ public class Trip {
                 sb.append("Stops: " + (routes.size() - 1) + " (");
                 for (int i = 0; i < routes.size() - 1; i++) {
                     sb.append(safe(routes.get(i).getArrivalCity()));
-                    if (i < routes.size() - 2) sb.append(", ");
+                    if (i < routes.size() - 2) {
+                        sb.append(", ");
+                    }
                 }
                 sb.append(")\n");
             } else {
@@ -167,7 +168,8 @@ public class Trip {
                 String ticketId = (r.getTicket() != null)
                         ? String.format("%03d", r.getTicket().getTicketId())
                         : "n/a";
-                sb.append(String.format("%-16s %-4s %-8s %-14s\n", name, age, id, ticketId));            }
+                sb.append(String.format("%-16s %-4s %-8s %-14s\n", name, age, id, ticketId));
+            }
         } else {
             sb.append("No reservations\n");
         }
@@ -178,11 +180,9 @@ public class Trip {
         return sb.toString();
     }
 
-
     // helper used inside getSummary
     private static String safe(String s) {
         return s == null ? "n/a" : s;
     }
-
 
 }
