@@ -9,7 +9,7 @@ public class Ticket {
         this.ticketId = nextId++;
     }
 
-    public long getTicketId() {
+    public int getTicketId() {
         return ticketId;
     }
 

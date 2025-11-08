@@ -6,24 +6,28 @@ import java.util.UUID;
 
 public class Trip {
 
-    private double tripDuration;
     private String tripId;
     private String status;
+    private double tripDuration;
+    private String reservationID;
+    private String clientId;
+    private String routeID;
+
+    //old ones that aren't in the db
     private List<Reservation> reservations;
     private List<TrainConnection> routes;
     private Client client;
 
-    public Trip() {
-        this.tripDuration = 0.0;
-        this.tripId = generateTripId();
-        this.reservations = new ArrayList<>();
-    }
-
     public Trip(List<TrainConnection> routes) {
-        this.tripDuration = 0.0;
-        this.routes = routes;
         this.tripId = generateTripId();
+        this.status = "Current";
+        this.tripDuration = 0.0;
+        this.reservationID = null;
+        this.clientId = null;
+        this.routeID = null;
+        this.routes = routes;
         this.reservations = new ArrayList<>();
+        this.client = null;
     }
 
     public double getTripDuration() {
@@ -39,7 +43,7 @@ public class Trip {
     }
 
     public void setTripId(String tripID) {
-        this.tripId = tripId;
+        this.tripId = tripID;
     }
 
     public Client getClient() {
@@ -54,10 +58,24 @@ public class Trip {
         return client != null ? client.getClientId() : null;  // Changed from -1 to null
     }
 
-    public void setClientId(String clientId) {  // Changed from long to String
-        if (client != null) {
-            client.setClientId(clientId);
-        }
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public void setRouteID(String routeID) {
+        this.routeID = routeID;
+    }
+
+    public String getRouteID() {
+        return this.routeID;
+    }
+
+    public void setReservationID(String reservationID) {
+        this.reservationID = reservationID;
+    }
+
+    public String getReservationID() {
+        return reservationID;
     }
 
     private static String generateTripId() {
@@ -133,10 +151,10 @@ public class Trip {
 
             // Departure and Arrival
             sb.append(String.format("Departure:  %s %s\n",
-                    safe(routes.get(0).getDaysOfOperation() != null && !routes.get(0).getDaysOfOperation().isEmpty() ? routes.get(0).getDaysOfOperation().get(0) : "n/a"),
+                    safe(routes.get(0).getDaysOfOperation() != null && !routes.get(0).getDaysOfOperation().isEmpty() ? routes.get(0).getDaysOfOperation() : "n/a"),
                     safe(routes.get(0).getDepartureTime())));
             sb.append(String.format("Arrival:    %s %s\n",
-                    safe(routes.get(routes.size() - 1).getDaysOfOperation() != null && !routes.get(routes.size() - 1).getDaysOfOperation().isEmpty() ? routes.get(routes.size() - 1).getDaysOfOperation().get(0) : "n/a"),
+                    safe(routes.get(routes.size() - 1).getDaysOfOperation() != null && !routes.get(routes.size() - 1).getDaysOfOperation().isEmpty() ? routes.get(routes.size() - 1).getDaysOfOperation() : "n/a"),
                     safe(routes.get(routes.size() - 1).getArrivalTime())));
 
             // Stops

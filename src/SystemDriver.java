@@ -4,18 +4,18 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class SystemDriver {
-    private static final String CSV_PATH = "resources/eu_rail_network.csv";
 
     // user inputs (shared state)
     static String userArrivalCity;
     static String userDepartureCity;
 
     // data access
-    static TrainConnectionDB trainDB = new TrainConnectionDB();
+    static TrainConnectionDB trainConnectionsDB = new TrainConnectionDB();
     static ClientDB clientDB = new ClientDB();
     static TripDB tripDB = new TripDB();
     static TicketDB ticketDB = new TicketDB();
     static Client client;
+    static ReservationDB reservationDB = new ReservationDB();
 
     // filters map holds optional filter values keyed by filter name (e.g. "depDay" -> "monday")
     static Map<String, String> filters = new HashMap<>();
@@ -26,15 +26,6 @@ public class SystemDriver {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        try {
-            trainDB.loadCSV(CSV_PATH);
-            //clientDB.loadClientsFromFile("clients.txt"); // load saved clients
-            tripDB.loadTripsFromFile("trips.txt");  // load trips
-        System.out.println("Loaded " + clientDB.getClients().size() + " clients from file.");
-        } catch (java.io.IOException e) {
-            e.printStackTrace();
-        }
-
         runMainLoop(scanner);
     }
 
@@ -42,7 +33,6 @@ public class SystemDriver {
     /* ---------------------------------------------------------------------
      * Main loop and menu routing
      * ------------------------------------------------------------------*/
-
     private static void runMainLoop(Scanner scanner) {
         boolean running = true;
         String departureCity = "";
@@ -86,7 +76,7 @@ public class SystemDriver {
                     running = false;
                     System.out.println("Exiting the system. Thank you for using our Train Connection System!");
                     break;
-                }
+            }
         }
     }
 
@@ -99,12 +89,9 @@ public class SystemDriver {
         System.out.print("Select an option: ");
     }
 
-
-
     /* ---------------------------------------------------------------------
      * Search flow and sorting UI
      * ------------------------------------------------------------------*/
-
     // Handles the search result presentation and the per-search submenu (sort/book).
     private static void handleSearchList(Scanner scanner, String departureCity, String arrivalCity) {
         List<TrainConnection> trainConnections = search();
@@ -177,12 +164,9 @@ public class SystemDriver {
         System.out.print("Select an option: ");
     }
 
-
-
     /* ---------------------------------------------------------------------
      * Add inputs / filters flow
      * ------------------------------------------------------------------*/
-
     private static void handleAddInputsFlow(Scanner scanner) {
         printFilterMenu();
         String filterChoice = scanner.nextLine().trim();
@@ -248,21 +232,18 @@ public class SystemDriver {
         System.out.print("Select an option: ");
     }
 
-
-
     /* ---------------------------------------------------------------------
      * Display helpers and route assembly
      * ------------------------------------------------------------------*/
-
     private static void displayConnection(TrainConnection tc) {
         System.out.println(
-                "From: " + tc.getDepartureCity() +
-                        ", To: " + tc.getArrivalCity() +
-                        ", Departure: " + tc.getDepartureTime() +
-                        ", Arrival: " + tc.getArrivalTime() +
-                        ", Train: " + tc.getTrain().getTrainType() +
-                        ", 1st Class: " + tc.getFirstClassRate() +
-                        ", 2nd Class: " + tc.getSecondClassRate());
+                "From: " + tc.getDepartureCity()
+                + ", To: " + tc.getArrivalCity()
+                + ", Departure: " + tc.getDepartureTime()
+                + ", Arrival: " + tc.getArrivalTime()
+                + ", Train: " + tc.getTrainType()
+                + ", 1st Class: " + tc.getFirstClassRate()
+                + ", 2nd Class: " + tc.getSecondClassRate());
     }
 
     /*
@@ -290,11 +271,17 @@ public class SystemDriver {
      Depth-first search to assemble routes. Depth parameter limits the stops (0 => direct allowed, depth >2 stops recursion).
      */
     private static void findRoutesDFS(Map<String, List<TrainConnection>> depMap, String currentCity, String arrivalCity,
-                                      List<TrainConnection> path, List<List<TrainConnection>> allRoutes, int depth) {
-        if (depth > 2) return; // restrict to at most 3 legs (2 stops)
+            List<TrainConnection> path, List<List<TrainConnection>> allRoutes, int depth) {
+        if (depth > 2) {
+            return; // restrict to at most 3 legs (2 stops)
+
+        }
         List<TrainConnection> nextConnections = depMap.getOrDefault(currentCity, Collections.emptyList());
         for (TrainConnection tc : nextConnections) {
-            if (path.contains(tc)) continue; // prevent cycles by reusing same connection object
+            if (path.contains(tc)) {
+                continue; // prevent cycles by reusing same connection object
+
+            }
             path.add(tc);
             if (tc.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
                 // reached destination: copy the path as a complete route
@@ -355,12 +342,11 @@ public class SystemDriver {
     /* ---------------------------------------------------------------------
      * Search and related helpers
      * ------------------------------------------------------------------*/
-
     // Performs a search for matching TrainConnection objects using current userDepartureCity/userArrivalCity and optional filters.
     public static List<TrainConnection> search() {
         DurationCalculator durationCalculator = new DurationCalculator();
         Map<String, String> appliedFilters = gatherFilters();
-        List<TrainConnection> connectionsList = trainDB.findConnections(userDepartureCity, userArrivalCity, appliedFilters);
+        List<TrainConnection> connectionsList = trainConnectionsDB.findConnections(userDepartureCity, userArrivalCity, appliedFilters);
 
         if (connectionsList != null && !connectionsList.isEmpty()) {
             for (TrainConnection tc : connectionsList) {
@@ -370,10 +356,15 @@ public class SystemDriver {
             return connectionsList;
         } else {
             // No direct connections found — try indirect routes (1-stop and 2-stops as implemented in DB)
-            List<TrainConnection> indirectConnections = trainDB.findIndirectConnections(userDepartureCity, userArrivalCity);
-            for (TrainConnection tc : indirectConnections) {
-                double duration = durationCalculator.computeAllTripDurations(tc);
-                tc.setDuration(duration);
+            List<List<TrainConnection>> paths = trainConnectionsDB.findIndirectConnections(userDepartureCity, userArrivalCity);
+            List<TrainConnection> indirectConnections = new ArrayList<>();
+
+            for (List<TrainConnection> route : paths) {
+                for (TrainConnection tc : route) {
+                    double duration = durationCalculator.computeAllTripDurations(tc);
+                    tc.setDuration(duration);
+                    indirectConnections.add(tc);
+                }
             }
             return indirectConnections;
         }
@@ -384,13 +375,11 @@ public class SystemDriver {
         return filters;
     }
 
-
-
     /* ---------------------------------------------------------------------
      * Sorting
      * ------------------------------------------------------------------*/
 
-    /*
+ /*
      Toggle sorting order for the provided parameter. If the same parameter is requested twice in a row,
      the ordering flips (ascending <-> descending). Otherwise ordering resets to ascending for the new parameter.
      */
@@ -406,13 +395,19 @@ public class SystemDriver {
 
         if (sortParameter.equals("duration")) {
             routes.sort(Comparator.comparingDouble(SystemDriver::computeTotalDuration));
-            if (!ascending) Collections.reverse(routes);
+            if (!ascending) {
+                Collections.reverse(routes);
+            }
         } else if (sortParameter.equals("firstClassRate")) {
             routes.sort(Comparator.comparingDouble(SystemDriver::computeAverageFirstClassRate));
-            if (!ascending) Collections.reverse(routes);
+            if (!ascending) {
+                Collections.reverse(routes);
+            }
         } else if (sortParameter.equals("secondClassRate")) {
             routes.sort(Comparator.comparingDouble(SystemDriver::computeAverageSecondClassRate));
-            if (!ascending) Collections.reverse(routes);
+            if (!ascending) {
+                Collections.reverse(routes);
+            }
         }
 
         return routes;
@@ -420,12 +415,14 @@ public class SystemDriver {
 
     /*
      Helpers to compute sorting keys for a route (a List of TrainConnection objects)
-  */
+     */
     private static double computeTotalDuration(List<TrainConnection> route) {
         double total = 0.0;
         for (int i = 0; i < route.size(); i++) {
             total += route.get(i).getDuration();
-            if (i > 0) total += calculateTransferTime(route.get(i - 1), route.get(i));
+            if (i > 0) {
+                total += calculateTransferTime(route.get(i - 1), route.get(i));
+            }
         }
         return total;
     }
@@ -443,7 +440,7 @@ public class SystemDriver {
      * Transfer time calculation
      * ------------------------------------------------------------------*/
 
-    /*
+ /*
      Compute the time (in hours) between the arrival of the first leg and the departure of the second leg.
      The method assumes times in HH:MM format and handles overnight transfers by adding 24h when the second
      departure time is earlier than the first arrival.
@@ -473,13 +470,11 @@ public class SystemDriver {
         return transferInMinutes / 60.0;
     }
 
-
-
     /* ---------------------------------------------------------------------
      * Filters, validation, recording
      * ------------------------------------------------------------------*/
 
-    /*
+ /*
      Update the filters map with a single option; validate the value first. After recording the input,
      re-run the search and (if results exist) show them and allow sorting.
      option strings used by the UI: depDay, arrDay, trainType, depTime, arrTime,
@@ -566,8 +561,7 @@ public class SystemDriver {
             case "depTime", "arrTime": // departure time, arrival time
                 // Accepts 24-hour format
                 return value.matches("([01]?\\d|2[0-3]):[0-5]\\d");
-            case "minFirstClassPrice", "maxFirstClassPrice", "minSecondClassPrice",
-                    "maxSecondClassPrice": // min/max prices
+            case "minFirstClassPrice", "maxFirstClassPrice", "minSecondClassPrice", "maxSecondClassPrice": // min/max prices
                 try {
                     double d = Double.parseDouble(value);
                     return d >= 0;
@@ -584,8 +578,6 @@ public class SystemDriver {
         System.out.println("Recorded input for route " + departureCity + " → " + arrivalCity + ": "
                 + option + " = " + value);
     }
-
-
 
     /* ---------------------------------------------------------------------
      * Booking Section
@@ -609,51 +601,51 @@ public class SystemDriver {
     }
 
     //Create a Trip object for the selected tripOptionNumber and collect reservations/tickets from the CLI.
-public static void bookTrip(int userTripOption) {
+    public static void bookTrip(int userTripOption) {
 
-    List<TrainConnection> trainConnections = search();
-    List<TrainConnection> selectedRoutes = getRoutes(trainConnections, userTripOption, userDepartureCity, userArrivalCity);
-    Trip trip = tripDB.createTrip(selectedRoutes);
+        List<TrainConnection> trainConnections = search();
+        List<TrainConnection> selectedRoutes = getRoutes(trainConnections, userTripOption, userDepartureCity, userArrivalCity);
+        Trip trip = tripDB.createTrip(selectedRoutes);
 
-    Scanner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in);
 
-    while (true) {
-        // Collect client information FIRST
-        System.out.println("Enter your first name: ");
-        String firstName = scanner.nextLine().trim();
-        
-        System.out.println("Enter your last name: ");
-        String lastName = scanner.nextLine().trim();
-        
-        System.out.println("Enter your age: ");
-        int age = Integer.parseInt(scanner.nextLine().trim());
-        
-        // Create client with all info at once (UUID is auto-generated)
-        Client c = clientDB.createClient(firstName, lastName, age);
-        
-        if (c == null) {
-            System.out.println("Failed to register client. Please try again.");
-            continue;
+        while (true) {
+            // Collect client information FIRST
+            System.out.println("Enter your first name: ");
+            String firstName = scanner.nextLine().trim();
+
+            System.out.println("Enter your last name: ");
+            String lastName = scanner.nextLine().trim();
+
+            System.out.println("Enter your age: ");
+            int age = Integer.parseInt(scanner.nextLine().trim());
+
+            // Create client with all info at once (UUID is auto-generated)
+            Client c = clientDB.createClient(firstName, lastName, age);
+
+            if (c == null) {
+                System.out.println("Failed to register client. Please try again.");
+                continue;
+            }
+
+            System.out.println("Client registered with ID: " + c.getClientId());
+
+            System.out.println(trip.getSummary());
+            System.out.println("Your tickets have been saved. Thank you for booking with us!\n");
+
+            Reservation r = createReservation(c);
+            tripDB.addReservationToTrip(trip, r);
+            r.setTicket(ticketDB.createTicket());
+
+            System.out.println("Add another traveller? (y/n)");
+            String more = scanner.nextLine().trim().toLowerCase();
+            if (!more.equals("y") && !more.equals("yes")) {
+                break;
+            }
         }
-        
-        System.out.println("Client registered with ID: " + c.getClientId());
 
         System.out.println(trip.getSummary());
-        System.out.println("Your tickets have been saved. Thank you for booking with us!\n");
-
-        Reservation r = createReservation(c);
-        tripDB.addReservationToTrip(trip, r);
-        r.setTicket(ticketDB.createTicket());
-
-        System.out.println("Add another traveller? (y/n)");
-        String more = scanner.nextLine().trim().toLowerCase();
-        if (!more.equals("y") && !more.equals("yes")) {
-            break;
-        }
     }
-
-    System.out.println(trip.getSummary());
-}
 
     public static Reservation createReservation(Client client) {
         Reservation r = new Reservation(client);
@@ -682,25 +674,25 @@ public static void bookTrip(int userTripOption) {
         return filteredRoutes.get(userOptionNumber - 1);
     }
 
-
-
     /* ---------------------------------------------------------------------
      * Small helpers for recording departure/arrival
      * ------------------------------------------------------------------*/
+    private static void addDeparture(String city) {
+        userDepartureCity = city;
+    }
 
-    public static void addArrival(String city) {
+    private static void addArrival(String city) {
         userArrivalCity = city;
     }
 
-    public static void addDeparture(String city) {
-        userDepartureCity = city;
-    }
 
     /*
       Lookup a client by last name and id, then print that client's trips (if any).
      */
     public static void viewTrips(String lastName, String clientID) {
-        if (lastName == null) lastName = "";
+        if (lastName == null) {
+            lastName = "";
+        }
         Client client = clientDB.getClientByLastNameAndID(lastName.toLowerCase(), clientID);
         if (client == null) {
             System.out.println("Client not found. Returning to main menu.");

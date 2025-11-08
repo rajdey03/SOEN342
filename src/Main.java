@@ -21,29 +21,27 @@ public class Main {
         //     System.err.println(e.getMessage());
         // }
         //SQL statement for creating a new TrainConnections table
-
         var trainConnections = "CREATE TABLE IF NOT EXISTS TrainConnections ("
                 + "routeID text PRIMARY KEY,"
                 + "departureCity text NOT NULL,"
                 + "arrivalCity text NOT NULL,"
-                + "dayOfOperation text NOT NULL,"
+                + "departureTime text NOT NULL,"
+                + "arrivalTime text NOT NULL,"
+                + "trainType text NOT NULL,"
+                + "daysOfOperation text NOT NULL,"
                 + "firstClassRate INTEGER NOT NULL,"
-                + "secondClassRate INTEGER NOT NULL,"
-                + "trainType text NOT NULL"
-                + ");";
-
-        var train = "CREATE TABLE IF NOT EXISTS Train ("
-                + "trainID text PRIMARY KEY,"
-                + "trainType text NOT NULL"
+                + "secondClassRate INTEGER NOT NULL"
                 + ");";
 
         var reservation = "CREATE TABLE IF NOT EXISTS Reservation ("
                 + "reservationID text PRIMARY KEY,"
-                + "routes text NOT NULL,"
+                + "routes text,"
                 + "ticketID text NOT NULL,"
                 + "clientID text NOT NULL,"
+                + "tripID text,"
                 + "FOREIGN KEY (ticketID) REFERENCES Ticket(ticketID),"
-                + "FOREIGN KEY (clientID) REFERENCES Client(clientID)"
+                + "FOREIGN KEY (clientID) REFERENCES Client(clientID),"
+                + "FOREIGN KEY (tripID) REFERENCES Trip(tripID)"
                 + ");";
 
         var client = "CREATE TABLE IF NOT EXISTS Client ("
@@ -57,11 +55,7 @@ public class Main {
                 + "tripID text PRIMARY KEY,"
                 + "status TEXT NOT NULL,"
                 + "tripDuration INTEGER NOT NULL,"
-                + "reservationID text NOT NULL,"
-                + "clientID text NOT NULL,"
-                + "routeID text NOT NULL,"
-                + "FOREIGN KEY (reservationID) REFERENCES Reservation(reservationID),"
-                + "FOREIGN KEY (clientID) REFERENCES Client(clientID)"
+                + "routeID text" // REMOVED reservationID and clientID
                 + ");";
 
         var ticket = "CREATE TABLE IF NOT EXISTS Ticket ("
@@ -69,13 +63,11 @@ public class Main {
                 + "totalCost INTEGER NOT NULL"
                 + ");";
 
-        try (var conn = DriverManager.getConnection(url); 
-        var stmt = conn.createStatement()) {
+        try (var conn = DriverManager.getConnection(url); var stmt = conn.createStatement()) {
             // enable foreign key constraints
             stmt.execute("PRAGMA foreign_keys = ON;");
 
             // create new tables
-            stmt.execute(train);
             stmt.execute(client);
             stmt.execute(trainConnections);
             stmt.execute(ticket);
@@ -86,27 +78,27 @@ public class Main {
         }
 
         // insert trainConnections data (from the csv) into trainConnections table
-        String sql = "INSERT INTO TrainConnections(routeID, departureCity, arrivalCity, dayOfOperation, firstClassRate, secondClassRate, trainType) VALUES(?,?,?,?,?,?,?)";
+        String sql = "INSERT INTO TrainConnections(routeID, departureCity, arrivalCity,departureTime, arrivalTime, trainType, daysOfOperation, firstClassRate, secondClassRate) VALUES(?,?,?,?,?,?,?,?,?)";
 
-        try (var conn = DriverManager.getConnection(url);
-            BufferedReader br = new BufferedReader(new FileReader("resources/eu_rail_network.csv"));
-            var pstmt = conn.prepareStatement(sql)) {
+        try (var conn = DriverManager.getConnection(url); BufferedReader br = new BufferedReader(new FileReader("resources/eu_rail_network.csv")); var pstmt = conn.prepareStatement(sql)) {
             String line;
 
-            while ((line = br.readLine())!= null){
+            while ((line = br.readLine()) != null) {
                 String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
                 pstmt.setString(1, data[0]);
                 pstmt.setString(2, data[1]);
                 pstmt.setString(3, data[2]);
-                pstmt.setString(4, data[6]);
-                pstmt.setString(5, data[7]);
-                pstmt.setString(6, data[8]);
-                pstmt.setString(7, data[5]);
-                pstmt.executeUpdate(); 
+                pstmt.setString(4, data[3]);
+                pstmt.setString(5, data[4]);
+                pstmt.setString(6, data[5]);
+                pstmt.setString(7, data[6]);
+                pstmt.setString(8, data[7]);
+                pstmt.setString(9, data[8]);
+                pstmt.executeUpdate();
             }
             System.out.println("CSV data inserted successfully.");
         } catch (Exception e) {
-            e.printStackTrace();   
+            e.printStackTrace();
         }
     }
 }

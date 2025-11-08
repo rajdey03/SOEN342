@@ -1,10 +1,10 @@
 package src;
 
-import java.util.List;
-
 public class Reservation {
     private Ticket ticket;
     private Client client;
+    private String reservationID;
+    private String ticketID;
 
     public Reservation(Client client) {
         this.client = client;
@@ -24,5 +24,21 @@ public class Reservation {
 
     public void setClient(Client client) {
         this.client = client;
+    }
+
+    public void setReservationID(String reservationID){
+        this.reservationID = reservationID;
+    }
+
+    public String getReservationID(){
+        return reservationID;
+    }
+
+    public String getTicketID(){
+        return ticketID;
+    }
+
+    public void setTicketID(String ticketID){
+        this.ticketID = ticketID;
     }
 }
