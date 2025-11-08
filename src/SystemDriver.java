@@ -2,6 +2,10 @@ package src;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,6 +27,9 @@ public class SystemDriver {
 
     static String lastSortParameter = null;
     static boolean ascending = true;
+
+    private static final LocalTime DAY_START = LocalTime.of(6, 0);   // 06:00 inclusive
+    private static final LocalTime DAY_END = LocalTime.of(22, 0);   // 22:00 inclusive
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
@@ -278,10 +285,23 @@ public class SystemDriver {
         }
         List<TrainConnection> nextConnections = depMap.getOrDefault(currentCity, Collections.emptyList());
         for (TrainConnection tc : nextConnections) {
-            if (path.contains(tc)) {
-                continue; // prevent cycles by reusing same connection object
+            if (path.contains(tc)) continue; // prevent cycles by reusing same connection object
 
+            // check layover constraints
+            if (!path.isEmpty()) {
+                // check layover time if this is not the first leg
+                TrainConnection prev = path.get(path.size() - 1);
+
+                // parse times with date offset to handle overnight layovers
+                LocalDateTime prevArrival  = parseTimeWithOffset(prev.getArrivalTime());
+                LocalDateTime nextDeparture = parseTimeWithOffset(tc.getDepartureTime());
+                // check layover policy
+                if (!isLayoverAcceptable(prevArrival, nextDeparture)) {
+                    // skip this leg if layover is not acceptable
+                    continue;
+                }
             }
+
             path.add(tc);
             if (tc.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
                 // reached destination: copy the path as a complete route
@@ -755,4 +775,74 @@ public class SystemDriver {
             System.out.println(t.getSummary());
         }
     }
+
+    /* ---------------------------------------------------------------------
+     * Layover policy implementation
+     * ------------------------------------------------------------------*/
+
+    /**
+     * Returns true when the time is considered "after hours".
+     * After hours defined as 22:00 .. 05:59:59
+     */
+    private static boolean isAfterHours(LocalTime time) {
+        // true if before DAY_START or at/after DAY_END
+        return time.isBefore(DAY_START) || !time.isBefore(DAY_END);
+    }
+
+    /**
+     * Compute layover Duration between arrival and next departure.
+     * If nextDeparture is before arrival, this returns a negative duration.
+     */
+    private static Duration computeLayover(LocalDateTime arrival, LocalDateTime nextDeparture) {
+        return Duration.between(arrival, nextDeparture);
+    }
+
+    /**
+     * Policy check for whether a layover is acceptable.
+     *
+     * Policy:
+     *  - Reject extremely long layovers longer than 48 hours.
+     *  - If either arrival or next departure is in after hours (22:00-05:59) then
+     *    require a short layover: between 5 and 30 minutes.
+     *  - Otherwise (daytime both sides) require a layover between 60 and 120 minutes.
+     */
+    private static boolean isLayoverAcceptable(LocalDateTime arrival, LocalDateTime nextDeparture) {
+        Duration layover = computeLayover(arrival, nextDeparture);
+
+        if (layover.compareTo(Duration.ofHours(48)) > 0) {
+            return false;
+        }
+
+        boolean arrivalAfterHours = isAfterHours(arrival.toLocalTime());
+        boolean departureAfterHours = isAfterHours(nextDeparture.toLocalTime());
+
+        if (arrivalAfterHours || departureAfterHours) {
+            Duration min = Duration.ofMinutes(5);
+            Duration max = Duration.ofMinutes(30);
+            return !layover.minus(min).isNegative() && layover.compareTo(max) <= 0;
+        } else {
+            Duration min = Duration.ofMinutes(60);
+            Duration max = Duration.ofMinutes(120);
+            return !layover.minus(min).isNegative() && layover.compareTo(max) <= 0;
+        }
+    }
+
+    // Parses a time string (e.g. "18:30", "03:11 (+1d)") and returns a LocalDateTime, using 2000-01-01 as the base date. If "(+1d)" is present, adds one day to the date.
+    private static LocalDateTime parseTimeWithOffset(String timeStr) {
+        boolean plusOneDay = timeStr.contains("(+1d)");
+
+        // Extract HH:MM part
+        String hhmm = timeStr.split(" ")[0];
+        LocalTime time = LocalTime.parse(hhmm);
+
+        LocalDate baseDate = LocalDate.of(2000, 1, 1);
+        if (plusOneDay) {
+            baseDate = baseDate.plusDays(1);
+        }
+
+        return LocalDateTime.of(baseDate, time);
+    }
+
+
+
 }
