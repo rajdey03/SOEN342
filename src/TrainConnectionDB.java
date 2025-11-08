@@ -1,87 +1,128 @@
 package src;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class TrainConnectionDB {
-    private List<TrainConnection> trainConnections;
 
-    public TrainConnectionDB(){
-        trainConnections = new ArrayList<>();
+    public TrainConnectionDB() {
     }
 
-    public void loadCSV(String filePath) throws IOException{
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))){
-            br.readLine();
-            String line;
-            while ((line = br.readLine()) != null){
-                String[] fields = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+    private static final String DB_URL = "jdbc:sqlite:my.db";
 
+    public List<TrainConnection> getAllConnections() {
+        List<TrainConnection> list = new ArrayList<>();
+        String sql = "SELECT routeID, departureCity, arrivalCity, departureTime, arrivalTime, trainType, daysOfOperation, "
+                + "firstClassRate, secondClassRate FROM TrainConnections";
+
+        try (var conn = DriverManager.getConnection(DB_URL); var stmt = conn.createStatement(); var rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
                 TrainConnection tc = new TrainConnection();
-                tc.setRouteID(fields[0]);
-                tc.setDepartureCity(fields[1]);
-                tc.setArrivalCity(fields[2]);
-                tc.setDepartureTime(fields[3]);
-                tc.setArrivalTime(fields[4]);
-                tc.setTrain(new Train(fields[5]));
-                tc.setDaysOfOperation(fields[6]);
-                tc.setFirstClassRate(Double.parseDouble(fields[7]));
-                tc.setSecondClassRate(Double.parseDouble(fields[8]));
-                trainConnections.add(tc);
+                tc.setRouteID(rs.getString("routeID"));
+                tc.setDepartureCity(rs.getString("departureCity"));
+                tc.setArrivalCity(rs.getString("arrivalCity"));
+                tc.setDepartureTime(rs.getString("departureTime"));
+                tc.setArrivalTime(rs.getString("arrivalTime"));
+                tc.setTrainType(rs.getString("trainType"));
+                tc.setDaysOfOperation(rs.getString("daysOfOperation"));
+                tc.setFirstClassRate(rs.getInt("firstClassRate"));
+                tc.setSecondClassRate(rs.getInt("secondClassRate"));
+                list.add(tc);
             }
 
+        } catch (SQLException e) {
+            System.err.println("Error loading train connections: " + e.getMessage());
         }
+
+        return list;
     }
 
-    public List<TrainConnection> getTrainConnections() {
-        return trainConnections;
+    public TrainConnection getByRouteID(String routeID) {
+        String sql = "SELECT routeID, departureCity, arrivalCity, departureTime, arrivalTime, trainType, daysOfOperation, "
+                + "firstClassRate, secondClassRate FROM TrainConnections";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, routeID);
+            try (ResultSet rs = pstmt.executeQuery()) {
+
+                if (rs.next()) {
+                    TrainConnection tc = new TrainConnection();
+                    tc.setRouteID(rs.getString("routeID"));
+                    tc.setDepartureCity(rs.getString("departureCity"));
+                    tc.setArrivalCity(rs.getString("arrivalCity"));
+                    tc.setDepartureTime(rs.getString("departureTime"));
+                    tc.setArrivalTime(rs.getString("arrivalTime"));
+                    tc.setTrainType(rs.getString("trainType"));
+                    tc.setDaysOfOperation(rs.getString("daysOfOperation"));
+                    tc.setFirstClassRate(rs.getInt("firstClassRate"));
+                    tc.setSecondClassRate(rs.getInt("secondClassRate"));
+                    return tc;
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error fetching route: " + e.getMessage());
+        }
+
+        return null;
     }
 
-    public void addTrainConnection(TrainConnection trainConnection) {
-        trainConnections.add(trainConnection);
-    }
-
-    public void removeTrainConnection(TrainConnection trainConnection) {
-        trainConnections.remove(trainConnection);
-    }
-
-
-    public List<TrainConnection> findConnections(String departureCity, String arrivalCity, Map<String,String> filters) {
+    public List<TrainConnection> findConnections(String departureCity, String arrivalCity, Map<String, String> filters) {
         List<TrainConnection> results = new ArrayList<>();
-        for (TrainConnection tc : trainConnections){
-            if (tc.getDepartureCity().equalsIgnoreCase(departureCity) &&
-                tc.getArrivalCity().equalsIgnoreCase(arrivalCity)){
+
+        // Load all connections from DB
+        List<TrainConnection> all = getAllConnections();
+
+        //Filter by mandatory departure and arrival
+        for (TrainConnection tc : all) {
+            if (tc.getDepartureCity().equalsIgnoreCase(departureCity)
+                    && tc.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
                 results.add(tc);
             }
         }
 
-        for(Map.Entry<String, String> filter : filters.entrySet()){
+        //Apply optional filters
+        for (Map.Entry<String, String> filter : filters.entrySet()) {
             String key = filter.getKey();
             String value = filter.getValue();
+
             results.removeIf(tc -> {
                 switch (key) {
-                    case "departureDay":
+                    case "depDay":  
                         return !tc.getDaysOfOperation().contains(value);
-                    case "arrivalDay":
+
+                    case "arrDay":  
                         return !tc.getDaysOfOperation().contains(value);
+
                     case "trainType":
-                        return !tc.getTrain().getTrainType().equalsIgnoreCase(value);
-                    case "departureTime":
+                        return !tc.getTrainType().equalsIgnoreCase(value);
+
+                    case "depTime":  
                         return tc.getDepartureTime().compareTo(value) < 0;
-                    case "arrivalTime":
+
+                    case "arrTime":  
                         return tc.getArrivalTime().compareTo(value) > 0;
+
                     case "minFirstClassPrice":
-                        return tc.getFirstClassRate() < Double.parseDouble(value);
+                        return tc.getFirstClassRate() < Integer.parseInt(value);
+
                     case "maxFirstClassPrice":
-                        return tc.getFirstClassRate() > Double.parseDouble(value);
+                        return tc.getFirstClassRate() > Integer.parseInt(value);
+
                     case "minSecondClassPrice":
-                        return tc.getSecondClassRate() < Double.parseDouble(value);
+                        return tc.getSecondClassRate() < Integer.parseInt(value);
+
                     case "maxSecondClassPrice":
-                        return tc.getSecondClassRate() > Double.parseDouble(value);
+                        return tc.getSecondClassRate() > Integer.parseInt(value);
+
                     default:
                         return false;
                 }
@@ -91,40 +132,47 @@ public class TrainConnectionDB {
         return results;
     }
 
-    public List<TrainConnection> findIndirectConnections(String departureCity, String arrivalCity) {
-        List<TrainConnection> results = new ArrayList<>();
+    public List<List<TrainConnection>> findIndirectConnections(String departureCity, String arrivalCity) {
+        List<TrainConnection> all = getAllConnections();
+        List<List<TrainConnection>> results = new ArrayList<>();
 
-        // Algorithm to find 1-stop connections
-        for (TrainConnection firstLeg : trainConnections) {
-            if (firstLeg.getDepartureCity().equalsIgnoreCase(departureCity)) {
-                for (TrainConnection secondLeg : trainConnections) {
-                    if (secondLeg.getDepartureCity().equalsIgnoreCase(firstLeg.getArrivalCity()) &&
-                            secondLeg.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
-                        results.add(firstLeg);
-                        results.add(secondLeg);
+        // 1-stop connections
+        for (TrainConnection first : all) {
+            if (first.getDepartureCity().equalsIgnoreCase(departureCity)) {
+                for (TrainConnection second : all) {
+                    if (second.getDepartureCity().equalsIgnoreCase(first.getArrivalCity())
+                            && second.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
+
+                        List<TrainConnection> route = new ArrayList<>();
+                        route.add(first);
+                        route.add(second);
+                        results.add(route);
                     }
                 }
             }
         }
 
-        // Algorithm to find 2-stop connections
-        for (TrainConnection firstLeg : trainConnections) {
-            if (firstLeg.getDepartureCity().equals(departureCity) && !firstLeg.getArrivalCity().equals(arrivalCity)) {
-                for (TrainConnection secondLeg : trainConnections) {
-                    if (secondLeg.getDepartureCity().equals(firstLeg.getArrivalCity()) && !secondLeg.getArrivalCity().equals(arrivalCity)
-                            && !secondLeg.getArrivalCity().equals(departureCity) && !secondLeg.getDepartureCity().equals(departureCity)) {
-                        for (TrainConnection thirdLeg : trainConnections) {
-                            if (thirdLeg.getDepartureCity().equals(secondLeg.getArrivalCity()) && thirdLeg.getArrivalCity().equals(arrivalCity)
-                                    && !thirdLeg.getDepartureCity().equals(departureCity) && !thirdLeg.getDepartureCity().equals(firstLeg.getArrivalCity())) {
-                                results.add(firstLeg);
-                                results.add(secondLeg);
-                                results.add(thirdLeg);
+        // 2-stop connections
+        for (TrainConnection first : all) {
+            if (first.getDepartureCity().equalsIgnoreCase(departureCity)) {
+                for (TrainConnection second : all) {
+                    if (second.getDepartureCity().equalsIgnoreCase(first.getArrivalCity())) {
+                        for (TrainConnection third : all) {
+                            if (third.getDepartureCity().equalsIgnoreCase(second.getArrivalCity())
+                                    && third.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
+
+                                List<TrainConnection> route = new ArrayList<>();
+                                route.add(first);
+                                route.add(second);
+                                route.add(third);
+                                results.add(route);
                             }
                         }
                     }
                 }
             }
         }
+
         return results;
     }
 

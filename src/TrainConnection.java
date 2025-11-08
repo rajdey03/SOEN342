@@ -1,9 +1,5 @@
 package src;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 public class TrainConnection {
     private String routeID;
     private String departureCity;
@@ -11,11 +7,12 @@ public class TrainConnection {
     private String departureTime;
     private String arrivalTime;
     private Train train;
-    private List<String> daysOfOperation;
+    private String daysOfOperation;
     private double firstClassRate;
     private double secondClassRate;
     private double duration;
     private int tripOptionNumber;
+    private String trainType;
 
 
     public String getRouteID() {
@@ -66,51 +63,12 @@ public class TrainConnection {
         this.train = train;
     }
 
-    public List<String> getDaysOfOperation() {
+    public String getDaysOfOperation() {
         return daysOfOperation;
     }
 
-    public void setDaysOfOperation(String field) {
-        String[] weekDays = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
-        ArrayList<String> days = new ArrayList<String>();
-
-        if (field.contains("-")) {
-            String[] temp_fields = field.split("-");
-            String start = temp_fields[0];
-            String end = temp_fields[1];
-            int i = 0;
-            while (i < weekDays.length && !weekDays[i].equals(start)) {
-                i++;
-            }
-            while (i < weekDays.length) {
-                days.add(weekDays[i]);
-                if (weekDays[i].equals(end)) {
-                    break;
-                }
-                i++;
-            }
-            this.daysOfOperation = days;
-        }
-
-
-        else if (field.contains("\"")){
-            field = field.replace("\"", "");
-            String[] temp_fields = field.split(",");
-
-            days.addAll(Arrays.asList(temp_fields));
-            this.daysOfOperation = days;
-        }
-
-        else if (field.equals("Daily")){
-            days.addAll(Arrays.asList(weekDays));
-            this.daysOfOperation = days;
-        }
-
-        else {
-            System.out.println("Error parsing days of operation");
-        }
-
-
+    public void setDaysOfOperation(String daysOfOperation) {
+      this.daysOfOperation = daysOfOperation;
     }
 
     public double getFirstClassRate() {
@@ -143,5 +101,13 @@ public class TrainConnection {
 
     public void setTripOptionNumber(int tripOptionNumber) {
         this.tripOptionNumber = tripOptionNumber;
+    }
+
+    public void setTrainType(String trainType){
+        this.trainType = trainType;
+    }
+
+    public String getTrainType(){
+        return this.trainType;
     }
 }
