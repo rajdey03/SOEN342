@@ -218,7 +218,7 @@ public class SystemDriver {
     }
 
     private static void printFilterMenu() {
-        System.out.println("Which input would you like to add?");
+        System.out.println("\nWhich input would you like to add?");
         System.out.println("1. Departure Day");
         System.out.println("2. Arrival Day");
         System.out.println("3. Train Type");

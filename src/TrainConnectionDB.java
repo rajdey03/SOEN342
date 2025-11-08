@@ -96,11 +96,20 @@ public class TrainConnectionDB {
 
             results.removeIf(tc -> {
                 switch (key) {
-                    case "departureDay":
+                    case "depDay":  
+                        return !tc.getDaysOfOperation().contains(value);
+
+                    case "arrDay":  
                         return !tc.getDaysOfOperation().contains(value);
 
                     case "trainType":
                         return !tc.getTrainType().equalsIgnoreCase(value);
+
+                    case "depTime":  
+                        return tc.getDepartureTime().compareTo(value) < 0;
+
+                    case "arrTime":  
+                        return tc.getArrivalTime().compareTo(value) > 0;
 
                     case "minFirstClassPrice":
                         return tc.getFirstClassRate() < Integer.parseInt(value);
