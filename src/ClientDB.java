@@ -57,7 +57,6 @@ public class ClientDB {
             pstmt.setInt(4, client.getAge());
             pstmt.executeUpdate();
 
-            System.out.println("Client registered successfully: " + clientID);
         } catch (SQLException e) {
             System.err.println("Error creating client: " + e.getMessage());
             return null;

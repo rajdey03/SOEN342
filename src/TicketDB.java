@@ -10,8 +10,8 @@ public class TicketDB {
     public TicketDB() {
     }
 
-    public Ticket createTicket() {
-        Ticket ticket = new Ticket();
+    public Ticket createTicket(double cost) {
+        Ticket ticket = new Ticket(cost);
 
         String sql = "INSERT INTO Ticket(ticketID, totalCost) VALUES(?,?)";
 

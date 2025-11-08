@@ -599,67 +599,86 @@ public class SystemDriver {
 
     public static void bookTrip(int userTripOption) {
 
-        List<TrainConnection> trainConnections = search();
-        List<TrainConnection> selectedRoutes = getRoutes(trainConnections, userTripOption, userDepartureCity, userArrivalCity);
-        Trip trip = tripDB.createTrip(selectedRoutes);
+    List<TrainConnection> trainConnections = search();
+    List<TrainConnection> selectedRoutes = getRoutes(trainConnections, userTripOption, userDepartureCity, userArrivalCity);
+    Trip trip = tripDB.createTrip(selectedRoutes);
 
-        Scanner scanner = new Scanner(System.in);
+    Scanner scanner = new Scanner(System.in);
 
-        while (true) {
-            // Collect client information
-            System.out.println("Enter your first name: ");
-            String firstName = scanner.nextLine().trim();
+    while (true) {
+        // Collect client information
+        System.out.println("Enter your first name: ");
+        String firstName = scanner.nextLine().trim();
 
-            System.out.println("Enter your last name: ");
-            String lastName = scanner.nextLine().trim();
+        System.out.println("Enter your last name: ");
+        String lastName = scanner.nextLine().trim();
 
-            System.out.println("Enter your age: ");
-            int age = Integer.parseInt(scanner.nextLine().trim());
+        System.out.println("Enter your age: ");
+        int age = Integer.parseInt(scanner.nextLine().trim());
 
-            // Create client
-            Client c = clientDB.createClient(firstName, lastName, age);
+        Client c = clientDB.createClient(firstName, lastName, age);
 
-            if (c == null) {
-                System.out.println("Failed to register client. Please try again.");
-                continue;
+        if (c == null) {
+            System.out.println("Failed to register client. Please try again.");
+            continue;
+        }
+
+        System.out.println("Client registered with ID: " + c.getClientId());
+
+        // Ask user for ticket class
+        System.out.println("Choose ticket class:");
+        System.out.println("1. First Class");
+        System.out.println("2. Second Class");
+        String classChoice = scanner.nextLine().trim();
+        
+        // Calculate total cost based on selected routes and class
+        double totalCost = 0.0;
+        if (classChoice.equals("1")) {
+            for (TrainConnection tc : selectedRoutes) {
+                totalCost += tc.getFirstClassRate();
             }
-
-            System.out.println("Client registered with ID: " + c.getClientId());
-
-            // Convert routes to string for storage
-            String routesString = selectedRoutes.stream()
-                    .map(tc -> tc.getDepartureCity() + "->" + tc.getArrivalCity())
-                    .collect(Collectors.joining(","));
-
-            Reservation r = reservationDB.createReservation(c, trip.getTripId(), routesString);
-
-            if (r == null) {
-                System.out.println("Failed to create reservation. Please try again.");
-                continue;
-            }
-
-            tripDB.addReservationToTrip(trip, r);
-
-            // Create and link ticket
-            Ticket ticket = ticketDB.createTicket();
-            if (ticket != null) {
-                r.setTicket(ticket);
-
-                updateReservationWithTicket(r.getReservationID(), ticket.getTicketId());
-            }
-
-            System.out.println(trip.getSummary());
-            System.out.println("Your tickets have been saved. Thank you for booking with us!\n");
-
-            System.out.println("Add another traveller? (y/n)");
-            String more = scanner.nextLine().trim().toLowerCase();
-            if (!more.equals("y") && !more.equals("yes")) {
-                break;
+        } else {
+            for (TrainConnection tc : selectedRoutes) {
+                totalCost += tc.getSecondClassRate();
             }
         }
 
+        // Convert routes to string for storage
+        String routesString = selectedRoutes.stream()
+            .map(tc -> tc.getDepartureCity() + "->" + tc.getArrivalCity())
+            .collect(Collectors.joining(","));
+
+        // Create reservation in DATABASE first
+        Reservation r = reservationDB.createReservation(c, trip.getTripId(), routesString);
+        
+        if (r == null) {
+            System.out.println("Failed to create reservation. Please try again.");
+            continue;
+        }
+
+        // Add to in-memory trip object
+        tripDB.addReservationToTrip(trip, r);
+        
+        // Create ticket with calculated cost
+        Ticket ticket = ticketDB.createTicket(totalCost);  // Pass the cost
+        if (ticket != null) {
+            r.setTicket(ticket);
+            updateReservationWithTicket(r.getReservationID(), ticket.getTicketId());
+            System.out.println("Ticket cost: $" + String.format("%.2f", totalCost));
+        }
+
         System.out.println(trip.getSummary());
+        System.out.println("Your tickets have been saved. Thank you for booking with us!\n");
+
+        System.out.println("Add another traveller? (y/n)");
+        String more = scanner.nextLine().trim().toLowerCase();
+        if (!more.equals("y") && !more.equals("yes")) {
+            break;
+        }
     }
+
+    System.out.println(trip.getSummary());
+}
 
     private static void updateReservationWithTicket(String reservationID, String ticketID) {
         try (var conn = DriverManager.getConnection("jdbc:sqlite:my.db"); var pstmt = conn.prepareStatement("UPDATE Reservation SET ticketID = ? WHERE reservationID = ?")) {
