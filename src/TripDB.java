@@ -2,9 +2,9 @@ package src;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class TripDB {
 
@@ -45,19 +45,24 @@ public class TripDB {
         }
         trip.setTripDuration(totalDuration);
 
-        // Save to database - FIXED: Only 3 parameters now
-        String sql = "INSERT INTO Trip(tripID, status, tripDuration) VALUES(?,?,?)";
+        // Save to database with auto-generated ID
+        String sql = "INSERT INTO Trip(status, tripDuration) VALUES(?,?)";
 
         try (var conn = DriverManager.getConnection(DB_URL); 
-             var pstmt = conn.prepareStatement(sql)) {
+             var pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            pstmt.setString(1, trip.getTripId());
-            pstmt.setString(2, trip.getStatus());
-            pstmt.setDouble(3, trip.getTripDuration());
-            // REMOVED the three setNull calls
+            pstmt.setString(1, trip.getStatus());
+            pstmt.setDouble(2, trip.getTripDuration());
             pstmt.executeUpdate();
 
-            System.out.println("Trip created successfully: " + trip.getTripId());
+            // Get the auto-generated numerical ID
+            var rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                String generatedId = String.valueOf(rs.getInt(1));
+                trip.setTripId(generatedId);
+                System.out.println("Trip created successfully: " + generatedId);
+            }
+
         } catch (SQLException e) {
             System.err.println("Error creating trip: " + e.getMessage());
             return null;
@@ -67,10 +72,8 @@ public class TripDB {
     }
 
     public void addReservationToTrip(Trip trip, Reservation reservation) {
-        // Add to in-memory trip object
         trip.addReservation(reservation);
 
-        // Update the RESERVATION table with the tripID, not the Trip table
         String sql = "UPDATE Reservation SET tripID = ? WHERE reservationID = ?";
 
         try (var conn = DriverManager.getConnection(DB_URL); 
@@ -85,16 +88,12 @@ public class TripDB {
         }
     }
 
-    /**
-     * Get all trips for a specific client
-     */
     public List<Trip> getTripsForClient(Client client) {
         List<Trip> clientTrips = new ArrayList<>();
         if (client == null) {
             return clientTrips;
         }
 
-        // FIXED: Added space after tripDuration and removed non-existent columns
         String sql = "SELECT DISTINCT t.tripID, t.status, t.tripDuration "
                 + "FROM Trip t "
                 + "JOIN Reservation r ON t.tripID = r.tripID "
@@ -111,15 +110,8 @@ public class TripDB {
                 trip.setTripId(rs.getString("tripID"));
                 trip.setStatus(rs.getString("status"));
                 trip.setTripDuration(rs.getDouble("tripDuration"));
-                // REMOVED these lines - these columns don't exist anymore:
-                // trip.setReservationID(rs.getString("reservationID"));
-                // trip.setClientId(rs.getString("clientID"));
-                // trip.setRouteID(rs.getString("routeID"));
 
-                // Load reservations for this trip
                 loadReservationsForTrip(trip);
-
-                // Load routes for this trip
                 loadRoutesForTrip(trip);
 
                 clientTrips.add(trip);
@@ -145,22 +137,19 @@ public class TripDB {
             var rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                // Reconstruct client
                 Client client = new Client();
                 client.setClientId(rs.getString("clientID"));
                 client.setFirstName(rs.getString("firstName"));
                 client.setLastName(rs.getString("lastName"));
                 client.setAge(rs.getInt("age"));
 
-                // Create reservation
                 Reservation reservation = new Reservation(client);
                 reservation.setReservationID(rs.getString("reservationID"));
 
-                // Create ticket if exists
                 String ticketID = rs.getString("ticketID");
                 if (ticketID != null && !ticketID.isEmpty()) {
                     Ticket ticket = new Ticket();
-                    ticket.setTicketId(Integer.parseInt(ticketID));
+                    ticket.setTicketId(ticketID);
                     reservation.setTicket(ticket);
                 }
 
@@ -172,7 +161,6 @@ public class TripDB {
     }
 
     private void loadRoutesForTrip(Trip trip) {
-        // TODO: Implement route storage and retrieval
-        // For now, routes are stored in memory during the session
+        //maybe implemented later?
     }
 }

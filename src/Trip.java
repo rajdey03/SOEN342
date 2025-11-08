@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public class Trip {
 
-    private String tripId;
+    private String tripId;  
     private String status;
     private double tripDuration;
     private String reservationID;
@@ -19,7 +19,7 @@ public class Trip {
     private Client client;
 
     public Trip(List<TrainConnection> routes) {
-        this.tripId = generateTripId();
+        this.tripId = null;  // Will be set by DB
         this.status = "Current";
         this.tripDuration = 0.0;
         this.reservationID = null;
@@ -54,8 +54,8 @@ public class Trip {
         this.client = client;
     }
 
-    public String getClientId() {  // Changed from long to String
-        return client != null ? client.getClientId() : null;  // Changed from -1 to null
+    public String getClientId() {  
+        return client != null ? client.getClientId() : null; 
     }
 
     public void setClientId(String clientId) {
@@ -137,19 +137,17 @@ public class Trip {
     public String getSummary() {
         StringBuilder sb = new StringBuilder();
         sb.append("\n");
-        sb.append(String.format("Trip ID: TRP-%s\n", getTripId().substring(0, 6).toUpperCase()));
+        sb.append(String.format("Trip ID: %s\n", getTripId())); 
 
-        // Connection line
         if (routes != null && !routes.isEmpty()) {
             sb.append("Connection: ");
             sb.append(safe(routes.get(0).getDepartureCity()));
             for (TrainConnection rc : routes) {
-                sb.append(" \u2192 "); // Unicode arrow
+                sb.append(" \u2192 ");
                 sb.append(safe(rc.getArrivalCity()));
             }
             sb.append("\n");
 
-            // Departure and Arrival
             sb.append(String.format("Departure:  %s %s\n",
                     safe(routes.get(0).getDaysOfOperation() != null && !routes.get(0).getDaysOfOperation().isEmpty() ? routes.get(0).getDaysOfOperation() : "n/a"),
                     safe(routes.get(0).getDepartureTime())));
@@ -157,7 +155,6 @@ public class Trip {
                     safe(routes.get(routes.size() - 1).getDaysOfOperation() != null && !routes.get(routes.size() - 1).getDaysOfOperation().isEmpty() ? routes.get(routes.size() - 1).getDaysOfOperation() : "n/a"),
                     safe(routes.get(routes.size() - 1).getArrivalTime())));
 
-            // Stops
             if (routes.size() > 1) {
                 sb.append("Stops: " + (routes.size() - 1) + " (");
                 for (int i = 0; i < routes.size() - 1; i++) {
@@ -184,7 +181,7 @@ public class Trip {
                 String age = (c != null) ? String.valueOf(c.getAge()) : "n/a";
                 String id = (c != null) ? safe(String.valueOf(c.getClientId())) : "n/a";
                 String ticketId = (r.getTicket() != null)
-                        ? String.format("%03d", r.getTicket().getTicketId())
+                        ? r.getTicket().getTicketId()
                         : "n/a";
                 sb.append(String.format("%-16s %-4s %-8s %-14s\n", name, age, id, ticketId));
             }
@@ -198,9 +195,7 @@ public class Trip {
         return sb.toString();
     }
 
-    // helper used inside getSummary
     private static String safe(String s) {
         return s == null ? "n/a" : s;
     }
-
 }

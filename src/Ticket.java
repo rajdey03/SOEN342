@@ -1,19 +1,21 @@
 package src;
 
+import java.util.UUID;
+
 public class Ticket {
-    private int ticketId;
-    private static int nextId = 1;
+    private String ticketId;  // Changed to String
     private double cost;
 
     public Ticket() {
-        this.ticketId = nextId++;
+        // Generate unique UUID-based ticket ID
+        this.ticketId = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     }
 
-    public int getTicketId() {
+    public String getTicketId() {  
         return ticketId;
     }
 
-    public void setTicketId(int ticketId) {
+    public void setTicketId(String ticketId) {  
         this.ticketId = ticketId;
     }
 

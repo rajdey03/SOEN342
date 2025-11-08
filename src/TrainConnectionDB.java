@@ -81,7 +81,7 @@ public class TrainConnectionDB {
         // Load all connections from DB
         List<TrainConnection> all = getAllConnections();
 
-        // Step 1: Filter by mandatory departure and arrival
+        //Filter by mandatory departure and arrival
         for (TrainConnection tc : all) {
             if (tc.getDepartureCity().equalsIgnoreCase(departureCity)
                     && tc.getArrivalCity().equalsIgnoreCase(arrivalCity)) {
@@ -89,7 +89,7 @@ public class TrainConnectionDB {
             }
         }
 
-        // Step 2: Apply optional filters
+        //Apply optional filters
         for (Map.Entry<String, String> filter : filters.entrySet()) {
             String key = filter.getKey();
             String value = filter.getValue();

@@ -52,10 +52,9 @@ public class Main {
                 + ");";
 
         var trip = "CREATE TABLE IF NOT EXISTS Trip ("
-                + "tripID text PRIMARY KEY,"
+                + "tripID INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + "status TEXT NOT NULL,"
-                + "tripDuration INTEGER NOT NULL,"
-                + "routeID text" // REMOVED reservationID and clientID
+                + "tripDuration REAL NOT NULL"
                 + ");";
 
         var ticket = "CREATE TABLE IF NOT EXISTS Ticket ("

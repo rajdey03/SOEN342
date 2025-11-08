@@ -1,5 +1,7 @@
 package src;
 
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -17,10 +19,8 @@ public class SystemDriver {
     static Client client;
     static ReservationDB reservationDB = new ReservationDB();
 
-    // filters map holds optional filter values keyed by filter name (e.g. "depDay" -> "monday")
     static Map<String, String> filters = new HashMap<>();
 
-    // sort toggling state: remember last parameter and whether the next sort should be ascending
     static String lastSortParameter = null;
     static boolean ascending = true;
 
@@ -483,7 +483,6 @@ public class SystemDriver {
     public static void updateInputs(String option, String value) {
         if (validateInput(option, value)) {
             filters.put(option, value);
-            // recordInput expects departureCity, arrivalCity
             recordInput(userDepartureCity, userArrivalCity, option, value);
         } else {
             System.out.println("Invalid input. Please try again.");
@@ -574,7 +573,6 @@ public class SystemDriver {
     }
 
     public static void recordInput(String departureCity, String arrivalCity, String option, String value) {
-        // Small helper that prints the recorded input; could be extended to persist user preferences
         System.out.println("Recorded input for route " + departureCity + " → " + arrivalCity + ": "
                 + option + " = " + value);
     }
@@ -592,7 +590,6 @@ public class SystemDriver {
 
         Client client = clientDB.getClientByLastNameAndID(lastName, id);
         if (client != null) {
-            //client = clientDB.getClients().get(clientIndex);
             System.out.println("Login successful. Welcome, " + client.getFirstName() + " " + client.getLastName() + "!");
             return true;
         } else {
@@ -600,7 +597,6 @@ public class SystemDriver {
         }
     }
 
-    //Create a Trip object for the selected tripOptionNumber and collect reservations/tickets from the CLI.
     public static void bookTrip(int userTripOption) {
 
         List<TrainConnection> trainConnections = search();
@@ -610,7 +606,7 @@ public class SystemDriver {
         Scanner scanner = new Scanner(System.in);
 
         while (true) {
-            // Collect client information FIRST
+            // Collect client information
             System.out.println("Enter your first name: ");
             String firstName = scanner.nextLine().trim();
 
@@ -620,7 +616,7 @@ public class SystemDriver {
             System.out.println("Enter your age: ");
             int age = Integer.parseInt(scanner.nextLine().trim());
 
-            // Create client with all info at once (UUID is auto-generated)
+            // Create client
             Client c = clientDB.createClient(firstName, lastName, age);
 
             if (c == null) {
@@ -630,12 +626,30 @@ public class SystemDriver {
 
             System.out.println("Client registered with ID: " + c.getClientId());
 
+            // Convert routes to string for storage
+            String routesString = selectedRoutes.stream()
+                    .map(tc -> tc.getDepartureCity() + "->" + tc.getArrivalCity())
+                    .collect(Collectors.joining(","));
+
+            Reservation r = reservationDB.createReservation(c, trip.getTripId(), routesString);
+
+            if (r == null) {
+                System.out.println("Failed to create reservation. Please try again.");
+                continue;
+            }
+
+            tripDB.addReservationToTrip(trip, r);
+
+            // Create and link ticket
+            Ticket ticket = ticketDB.createTicket();
+            if (ticket != null) {
+                r.setTicket(ticket);
+
+                updateReservationWithTicket(r.getReservationID(), ticket.getTicketId());
+            }
+
             System.out.println(trip.getSummary());
             System.out.println("Your tickets have been saved. Thank you for booking with us!\n");
-
-            Reservation r = createReservation(c);
-            tripDB.addReservationToTrip(trip, r);
-            r.setTicket(ticketDB.createTicket());
 
             System.out.println("Add another traveller? (y/n)");
             String more = scanner.nextLine().trim().toLowerCase();
@@ -645,6 +659,16 @@ public class SystemDriver {
         }
 
         System.out.println(trip.getSummary());
+    }
+
+    private static void updateReservationWithTicket(String reservationID, String ticketID) {
+        try (var conn = DriverManager.getConnection("jdbc:sqlite:my.db"); var pstmt = conn.prepareStatement("UPDATE Reservation SET ticketID = ? WHERE reservationID = ?")) {
+            pstmt.setString(1, ticketID);
+            pstmt.setString(2, reservationID);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error updating reservation with ticket: " + e.getMessage());
+        }
     }
 
     public static Reservation createReservation(Client client) {
@@ -662,7 +686,6 @@ public class SystemDriver {
         // Find the minimum number of legs among all routes
         int minLegs = allRoutes.stream().mapToInt(List::size).min().orElse(Integer.MAX_VALUE);
 
-        // Only keep routes with the minimum number of legs (prefer fewer stops)
         List<List<TrainConnection>> filteredRoutes = allRoutes.stream()
                 .filter(route -> route.size() == minLegs)
                 .collect(Collectors.toList());
