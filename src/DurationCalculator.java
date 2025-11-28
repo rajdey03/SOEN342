@@ -7,8 +7,11 @@ public class DurationCalculator {
     }
 
     private double computeSingleDuration(String dep, String arr) {
-        String[] d = dep.split(":");
-        String[] a = arr.split(":");
+        String cleanDep = dep.split(" ")[0];
+        String cleanArr = arr.split(" ")[0];
+
+        String[] d = cleanDep.split(":");
+        String[] a = cleanArr.split(":");
 
         int depH = Integer.parseInt(d[0]);
         int depM = Integer.parseInt(d[1]);
