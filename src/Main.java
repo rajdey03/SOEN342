@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Main {
 
@@ -82,15 +84,23 @@ public class Main {
         try (var conn = DriverManager.getConnection(url); BufferedReader br = new BufferedReader(new FileReader("resources/eu_rail_network.csv")); var pstmt = conn.prepareStatement(sql)) {
             String line;
 
+            br.readLine();
+
             while ((line = br.readLine()) != null) {
                 String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+                // Get the original day string from data[6]
+                String originalDays = data[6];
+                // Create the new, expanded day string
+                String expandedDays = expandDays(originalDays);
+
                 pstmt.setString(1, data[0]);
                 pstmt.setString(2, data[1]);
                 pstmt.setString(3, data[2]);
                 pstmt.setString(4, data[3]);
                 pstmt.setString(5, data[4]);
                 pstmt.setString(6, data[5]);
-                pstmt.setString(7, data[6]);
+                pstmt.setString(7, expandedDays);
                 pstmt.setString(8, data[7]);
                 pstmt.setString(9, data[8]);
                 pstmt.executeUpdate();
@@ -99,5 +109,53 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+    }
+
+    private static String expandDays(String days) {
+        // Use 3-letter day codes to match your CSV data
+        final List<String> ALL_DAYS = List.of("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun");
+
+        if ("Daily".equalsIgnoreCase(days)) {
+            return String.join(", ", ALL_DAYS);
+        }
+
+        if (days.contains("-")) {
+            try {
+                String[] parts = days.split("-");
+                String startDay = parts[0];
+                String endDay = parts[1];
+
+                int startIndex = ALL_DAYS.indexOf(startDay);
+                int endIndex = ALL_DAYS.indexOf(endDay);
+
+                if (startIndex == -1 || endIndex == -1) {
+                    return days; // Not a valid range we can parse, return original
+                }
+
+                List<String> resultDays = new ArrayList<>();
+                if (startIndex <= endIndex) {
+                    // Normal range (e.g., "Mon-Fri")
+                    for (int i = startIndex; i <= endIndex; i++) {
+                        resultDays.add(ALL_DAYS.get(i));
+                    }
+                } else {
+                    // Wraparound range (e.g., "Fri-Mon")
+                    for (int i = startIndex; i < ALL_DAYS.size(); i++) {
+                        resultDays.add(ALL_DAYS.get(i));
+                    }
+                    for (int i = 0; i <= endIndex; i++) {
+                        resultDays.add(ALL_DAYS.get(i));
+                    }
+                }
+                return String.join(", ", resultDays);
+            } catch (Exception e) {
+                System.err.println("Could not parse day range: " + days);
+                return days;
+            }
+        }
+
+        // If it's already in the "Mon, Wed, Fri" format or a single day
+        return days;
     }
 }

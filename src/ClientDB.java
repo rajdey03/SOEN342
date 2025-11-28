@@ -43,7 +43,7 @@ public class ClientDB {
         client.setAge(age);
 
         // Generate a unique clientID using UUID
-        String clientID = UUID.randomUUID().toString();
+        String clientID = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         client.setClientId(clientID);
 
         // Insert into database
@@ -65,9 +65,9 @@ public class ClientDB {
         return client;
     }
 
-    // Get a specific client by last name and ID 
+    // Get a specific client by last name and ID
     public Client getClientByLastNameAndID(String lastName, String clientID) {
-        String sql = "SELECT clientID, firstName, lastName, age FROM Client WHERE lastName = ? AND clientID = ?";
+        String sql = "SELECT clientID, firstName, lastName, age FROM Client WHERE lastName = ? COLLATE NOCASE AND clientID = ?";
 
         try (var conn = DriverManager.getConnection(DB_URL); var pstmt = conn.prepareStatement(sql)) {
 

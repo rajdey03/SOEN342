@@ -17,12 +17,12 @@ public class TripDB {
         List<Trip> trips = new ArrayList<>();
 
         String sql = "SELECT tripID, status, tripDuration FROM Trip";
-        try (var conn = DriverManager.getConnection(DB_URL); 
-             var stmt = conn.createStatement(); 
+        try (var conn = DriverManager.getConnection(DB_URL);
+             var stmt = conn.createStatement();
              var rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                Trip trip = new Trip(new ArrayList<TrainConnection>());
+                Trip trip = new Trip(new ArrayList<>());
                 trip.setTripId(rs.getString("tripID"));
                 trip.setStatus(rs.getString("status"));
                 trip.setTripDuration(rs.getDouble("tripDuration"));
@@ -48,7 +48,7 @@ public class TripDB {
         // Save to database with auto-generated ID
         String sql = "INSERT INTO Trip(status, tripDuration) VALUES(?,?)";
 
-        try (var conn = DriverManager.getConnection(DB_URL); 
+        try (var conn = DriverManager.getConnection(DB_URL);
              var pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             pstmt.setString(1, trip.getStatus());
@@ -60,7 +60,6 @@ public class TripDB {
             if (rs.next()) {
                 String generatedId = String.valueOf(rs.getInt(1));
                 trip.setTripId(generatedId);
-                System.out.println("Trip created successfully: " + generatedId);
             }
 
         } catch (SQLException e) {
@@ -76,7 +75,7 @@ public class TripDB {
 
         String sql = "UPDATE Reservation SET tripID = ? WHERE reservationID = ?";
 
-        try (var conn = DriverManager.getConnection(DB_URL); 
+        try (var conn = DriverManager.getConnection(DB_URL);
              var pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, trip.getTripId());
@@ -99,14 +98,14 @@ public class TripDB {
                 + "JOIN Reservation r ON t.tripID = r.tripID "
                 + "WHERE r.clientID = ?";
 
-        try (var conn = DriverManager.getConnection(DB_URL); 
+        try (var conn = DriverManager.getConnection(DB_URL);
              var pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, client.getClientId());
             var rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                Trip trip = new Trip(new ArrayList<TrainConnection>());
+                Trip trip = new Trip(new ArrayList<>());
                 trip.setTripId(rs.getString("tripID"));
                 trip.setStatus(rs.getString("status"));
                 trip.setTripDuration(rs.getDouble("tripDuration"));
@@ -124,13 +123,13 @@ public class TripDB {
     }
 
     private void loadReservationsForTrip(Trip trip) {
-        String sql = "SELECT r.reservationID, r.clientID, r.ticketID, "
+        String sql = "SELECT r.reservationID, c.clientID, r.ticketID, "
                 + "c.firstName, c.lastName, c.age "
                 + "FROM Reservation r "
                 + "JOIN Client c ON r.clientID = c.clientID "
                 + "WHERE r.tripID = ?";
 
-        try (var conn = DriverManager.getConnection(DB_URL); 
+        try (var conn = DriverManager.getConnection(DB_URL);
              var pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, trip.getTripId());
@@ -138,6 +137,7 @@ public class TripDB {
 
             while (rs.next()) {
                 Client client = new Client();
+
                 client.setClientId(rs.getString("clientID"));
                 client.setFirstName(rs.getString("firstName"));
                 client.setLastName(rs.getString("lastName"));
@@ -161,6 +161,6 @@ public class TripDB {
     }
 
     private void loadRoutesForTrip(Trip trip) {
-        //maybe implemented later?
+        // TODO: Implement loading of route segments if needed for history view
     }
 }

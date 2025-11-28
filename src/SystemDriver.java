@@ -239,6 +239,21 @@ public class SystemDriver {
         System.out.print("Select an option: ");
     }
 
+    private static String normalizeDayInput(String dayInput) {
+        if (dayInput == null) return null;
+        String lowerInput = dayInput.trim().toLowerCase();
+
+        if (lowerInput.startsWith("mon")) return "Mon";
+        if (lowerInput.startsWith("tue")) return "Tue";
+        if (lowerInput.startsWith("wed")) return "Wed";
+        if (lowerInput.startsWith("thu")) return "Thu";
+        if (lowerInput.startsWith("fri")) return "Fri";
+        if (lowerInput.startsWith("sat")) return "Sat";
+        if (lowerInput.startsWith("sun")) return "Sun";
+
+        return null;
+    }
+
     /* ---------------------------------------------------------------------
      * Display helpers and route assembly
      * ------------------------------------------------------------------*/
@@ -295,6 +310,10 @@ public class SystemDriver {
                 // parse times with date offset to handle overnight layovers
                 LocalDateTime prevArrival  = parseTimeWithOffset(prev.getArrivalTime());
                 LocalDateTime nextDeparture = parseTimeWithOffset(tc.getDepartureTime());
+
+                if (nextDeparture.isBefore(prevArrival)) {
+                    nextDeparture = nextDeparture.plusDays(1);
+                }
                 // check layover policy
                 if (!isLayoverAcceptable(prevArrival, nextDeparture)) {
                     // skip this leg if layover is not acceptable
@@ -366,28 +385,21 @@ public class SystemDriver {
     public static List<TrainConnection> search() {
         DurationCalculator durationCalculator = new DurationCalculator();
         Map<String, String> appliedFilters = gatherFilters();
-        List<TrainConnection> connectionsList = trainConnectionsDB.findConnections(userDepartureCity, userArrivalCity, appliedFilters);
 
+        // 1. Get ALL connections that match the filters
+        // (This replaces the old findConnections and findIndirectConnections)
+        List<TrainConnection> connectionsList = trainConnectionsDB.getFilteredConnections(appliedFilters);
+
+        // 2. Calculate duration for the valid connections
         if (connectionsList != null && !connectionsList.isEmpty()) {
             for (TrainConnection tc : connectionsList) {
                 double duration = durationCalculator.computeAllTripDurations(tc);
-                tc.setDuration(duration); // store duration on the connection for sorting/display
+                tc.setDuration(duration); // store duration
             }
-            return connectionsList;
-        } else {
-            // No direct connections found — try indirect routes (1-stop and 2-stops as implemented in DB)
-            List<List<TrainConnection>> paths = trainConnectionsDB.findIndirectConnections(userDepartureCity, userArrivalCity);
-            List<TrainConnection> indirectConnections = new ArrayList<>();
-
-            for (List<TrainConnection> route : paths) {
-                for (TrainConnection tc : route) {
-                    double duration = durationCalculator.computeAllTripDurations(tc);
-                    tc.setDuration(duration);
-                    indirectConnections.add(tc);
-                }
-            }
-            return indirectConnections;
         }
+
+        // 3. Return the entire filtered list
+        return connectionsList;
     }
 
     //Return the currently-recorded filters map. Kept as a method to centralize potential future transformations.
@@ -502,10 +514,19 @@ public class SystemDriver {
      */
     public static void updateInputs(String option, String value) {
         if (validateInput(option, value)) {
-            filters.put(option, value);
-            recordInput(userDepartureCity, userArrivalCity, option, value);
+            String processedValue = value; // Default to original value
+
+            // If it's a day, get the normalized 3-letter code
+            if (option.equals("depDay") || option.equals("arrDay")) {
+                processedValue = normalizeDayInput(value);
+            }
+
+            filters.put(option, processedValue);
+            recordInput(userDepartureCity, userArrivalCity, option, processedValue);
+
         } else {
             System.out.println("Invalid input. Please try again.");
+            return;
         }
         List<TrainConnection> filteredConnections = search();
         List<List<TrainConnection>> routes = getFilteredRoutes(filteredConnections, userDepartureCity, userArrivalCity);
@@ -575,7 +596,9 @@ public class SystemDriver {
     //Validate a single input option/value pair. Returns true if the value is acceptable for the option.
     public static boolean validateInput(String option, String value) {
         switch (option) {
-            case "depDay", "arrDay", "trainType": // departure day, arrival day, train type
+            case "depDay", "arrDay":
+                return normalizeDayInput(value) != null; // Check if it's a valid day
+            case "trainType":
                 return value != null && !value.trim().isEmpty();
             case "depTime", "arrTime": // departure time, arrival time
                 // Accepts 24-hour format
@@ -631,7 +654,12 @@ public class SystemDriver {
         String firstName = scanner.nextLine().trim();
 
         System.out.println("Enter your last name: ");
-        String lastName = scanner.nextLine().trim();
+        String rawName = scanner.nextLine().trim();
+
+        String lastName = "";
+        if (!rawName.isEmpty()) {
+            lastName = rawName.substring(0, 1).toUpperCase() + rawName.substring(1).toLowerCase();
+        }
 
         System.out.println("Enter your age: ");
         int age = Integer.parseInt(scanner.nextLine().trim());
@@ -755,7 +783,7 @@ public class SystemDriver {
         if (lastName == null) {
             lastName = "";
         }
-        Client client = clientDB.getClientByLastNameAndID(lastName.toLowerCase(), clientID);
+        Client client = clientDB.getClientByLastNameAndID(lastName, clientID);
         if (client == null) {
             System.out.println("Client not found. Returning to main menu.");
             return;
@@ -804,7 +832,7 @@ public class SystemDriver {
      *  - Reject extremely long layovers longer than 48 hours.
      *  - If either arrival or next departure is in after hours (22:00-05:59) then
      *    require a short layover: between 5 and 30 minutes.
-     *  - Otherwise (daytime both sides) require a layover between 60 and 120 minutes.
+     *  - Otherwise (daytime both sides) require a layover between 30 and 180 minutes.
      */
     private static boolean isLayoverAcceptable(LocalDateTime arrival, LocalDateTime nextDeparture) {
         Duration layover = computeLayover(arrival, nextDeparture);
@@ -818,11 +846,13 @@ public class SystemDriver {
 
         if (arrivalAfterHours || departureAfterHours) {
             Duration min = Duration.ofMinutes(5);
-            Duration max = Duration.ofMinutes(30);
+            Duration max = Duration.ofMinutes(60);
             return !layover.minus(min).isNegative() && layover.compareTo(max) <= 0;
-        } else {
-            Duration min = Duration.ofMinutes(60);
-            Duration max = Duration.ofMinutes(120);
+        }
+
+        else {
+            Duration min = Duration.ofMinutes(20);
+            Duration max = Duration.ofMinutes(240);
             return !layover.minus(min).isNegative() && layover.compareTo(max) <= 0;
         }
     }
